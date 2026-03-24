@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AR Wall Prototype: Smooth Redirect</title>
+    <title>AR Wall Prototype: Video Flow</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -10,22 +10,20 @@
     <style>
         #overlay, #confirmOverlay { 
             position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: rgba(0,0,0,0.8); 
-            z-index: 9999; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            flex-direction: column; 
-            color: white; 
-            font-family: sans-serif; 
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            font-family: sans-serif;
         }
 
         #confirmOverlay {
-            display: none; /* Hidden until sub-target is found */
+            display: none;
             z-index: 10000;
         }
 
@@ -35,148 +33,152 @@
             border-radius: 15px;
             border: 2px solid #FFD700;
             text-align: center;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         button { 
-            padding: 15px 30px; 
-            font-size: 1.2rem; 
-            cursor: pointer; 
-            border: none; 
-            border-radius: 8px; 
-            background: #FFD700; 
-            color: #333; 
-            font-weight: bold; 
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            background: #FFD700;
             margin: 10px;
         }
 
-        button#noBtn {
+        #noBtn {
             background: #555;
             color: white;
         }
 
-        #instructions { 
-            margin-top: 20px; 
-            text-align: center; 
-            max-width: 80%; 
-            line-height: 1.4; 
-        }
-
-        html, body { 
-            margin: 0; 
-            height: 100%; 
-            overflow: hidden; 
-        }
+        html, body { margin: 0; height: 100%; overflow: hidden; }
     </style>
 </head>
 
 <body>
 
-    <div id="overlay">
-        <button id="startButton">Start AR Experience</button>
-        <div id="instructions">
-            Point at the poster.<br>
-            Walk closer to markers to trigger activities.
-        </div>
+<div id="overlay">
+    <button id="startButton">Start AR Experience</button>
+    <div>Point at the poster and move closer to trigger activity.</div>
+</div>
+
+<div id="confirmOverlay">
+    <div class="modal-box">
+        <h2>Keystone Lake: Bull Creek Boat Ramp</h2>
+        <p>Would you like to go to the page?</p>
+        <button id="yesBtn">Open Page</button>
+        <button id="noBtn">Not Now</button>
     </div>
+</div>
 
-    <div id="confirmOverlay">
-        <div class="modal-box">
-            <h2>Keystone Lake: Bull Creek Boat Ramp</h2>
-            <p>Would you like to go to the page for the Bull Creek Boat Ramp?</p>
-            <button id="yesBtn">Open Page</button>
-            <button id="noBtn">Not Now</button>
-        </div>
-    </div>
+<a-scene
+    mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001;"
+    vr-mode-ui="enabled: false;"
+    device-orientation-permission-ui="enabled: false"
+    renderer="colorManagement: false; logarithmicDepthBuffer: true;">
 
-    <a-scene
-        mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;"
-        vr-mode-ui="enabled: false;"
-        device-orientation-permission-ui="enabled: false"
-        renderer="colorManagement: false; logarithmicDepthBuffer: true;">
+    <a-assets>
+        <img id="markerImage" src="assets/marker.png">
 
-        <a-assets>
-            <img id="markerImage" src="assets/marker.png" crossorigin="anonymous">
-        </a-assets>
+        <!-- VIDEO ASSET -->
+        <video 
+            id="brushVideo"
+            src="assets/Brush Creek Park.mp4"
+            preload="auto"
+            crossorigin="anonymous"
+            muted
+            playsinline
+            webkit-playsinline>
+        </video>
+    </a-assets>
 
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-entity mindar-image-target="targetIndex: 0">
-            <!-- Top-right marker (existing) -->
-                <a-image 
-                    src="#markerImage" 
-                    position="0.3 0.2 0.03" 
-                    width="0.15" height="0.15"
-                    material="shader: flat;"
-                    animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
-                </a-image>
+    <!-- MAIN TARGET -->
+    <a-entity mindar-image-target="targetIndex: 0">
+        <a-image 
+            src="#markerImage"
+            position="0.3 0.2 0.03"
+            width="0.15" height="0.15"
+            animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
+        </a-image>
+    </a-entity>
 
-                <!-- Middle-left marker (new) -->
-                <a-image 
-                    src="#markerImage"
-                    position="-0.3 0.0 0.03"
-                    width="0.15" height="0.15"
-                    material="shader: flat;"
-                    animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
-                </a-image>
-        </a-entity>
+    <!-- SUB TARGET -->
+    <a-entity id="subTarget" mindar-image-target="targetIndex: 1">
 
-        <a-entity id="subTarget" mindar-image-target="targetIndex: 1"></a-entity>
+        <!-- VIDEO IN AR -->
+        <a-video 
+            id="videoPlane"
+            src="#brushVideo"
+            width="1"
+            height="0.6"
+            position="0 0 0.1"
+            visible="false">
+        </a-video>
 
-    </a-scene>
+    </a-entity>
 
-    <script>
-        let hasTriggered = false;
-        const websiteURL = "https://www.recreation.gov/activitypass/AP22376"; //Bull Creek Boat Ramp Website Link for KSL
+</a-scene>
 
-        const startButton = document.querySelector('#startButton');
-        const overlay = document.querySelector('#overlay');
-        const confirmOverlay = document.querySelector('#confirmOverlay');
-        const yesBtn = document.querySelector('#yesBtn');
-        const noBtn = document.querySelector('#noBtn');
-        const subTarget = document.querySelector('#subTarget');
+<script>
+let hasTriggered = false;
 
-        /* 1. Start Button Logic */
-        startButton.addEventListener('click', () => {
-            overlay.style.display = 'none';
-            // Trigger resize to fix camera aspect ratio
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-            }, 100);
-        });
+const websiteURL = "https://www.recreation.gov/activitypass/AP22376";
 
-        /* 2. Sub-target Recognition */
-        subTarget.addEventListener('targetFound', () => {
-            if (hasTriggered) return;
-            
-            hasTriggered = true;
-            confirmOverlay.style.display = 'flex';
-        });
+const startButton = document.querySelector('#startButton');
+const overlay = document.querySelector('#overlay');
+const confirmOverlay = document.querySelector('#confirmOverlay');
+const yesBtn = document.querySelector('#yesBtn');
+const noBtn = document.querySelector('#noBtn');
 
-        // Optional: Reset trigger when user walks away so they can re-trigger it
-        subTarget.addEventListener('targetLost', () => {
-            // Uncomment the line below if you want the popup to reappear every time they walk up to it
-            hasTriggered = false; 
-        });
+const subTarget = document.querySelector('#subTarget');
+const videoEl = document.querySelector('#brushVideo');
+const videoPlane = document.querySelector('#videoPlane');
 
-        /* 3. Confirmation Buttons (User Interaction for Safari) */
-        yesBtn.addEventListener('click', () => {
-            confirmOverlay.style.display = 'none';
-            
-            // This is now a direct result of a click, so Safari will focus the new tab
-            window.open(websiteURL, '_blank');
+/* START BUTTON */
+startButton.addEventListener('click', () => {
+    overlay.style.display = 'none';
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+});
 
-            // Optional: reset so they can trigger it again later
-            setTimeout(() => { hasTriggered = false; }, 3000); 
-        });
+/* SUB TARGET FOUND */
+subTarget.addEventListener('targetFound', () => {
+    if (hasTriggered) return;
 
-        noBtn.addEventListener('click', () => {
-            confirmOverlay.style.display = 'none';
-            // Keep hasTriggered as true if you don't want it popping up immediately again
-            // Or set to false with a delay so it's not annoying
-            setTimeout(() => { hasTriggered = false; }, 5000);
-        });
-    </script>
+    hasTriggered = true;
+
+    console.log("Playing AR video");
+
+    videoPlane.setAttribute('visible', true);
+
+    videoEl.currentTime = 0;
+    videoEl.play();
+});
+
+/* VIDEO FINISHED */
+videoEl.addEventListener('ended', () => {
+    console.log("Video ended");
+
+    videoPlane.setAttribute('visible', false);
+
+    confirmOverlay.style.display = 'flex';
+});
+
+/* RESET WHEN LOST */
+subTarget.addEventListener('targetLost', () => {
+    videoEl.pause();
+});
+
+/* BUTTONS */
+yesBtn.addEventListener('click', () => {
+    confirmOverlay.style.display = 'none';
+    window.open(websiteURL, '_blank');
+    setTimeout(() => { hasTriggered = false; }, 3000);
+});
+
+noBtn.addEventListener('click', () => {
+    confirmOverlay.style.display = 'none';
+    setTimeout(() => { hasTriggered = false; }, 5000);
+});
+</script>
 
 </body>
 </html>
