@@ -1,158 +1,182 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Our AR Map Prototype</title>
+    <title>AR Wall Prototype: Smooth Redirect</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <style>
+        #overlay, #confirmOverlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.8); 
+            z-index: 9999; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            flex-direction: column; 
+            color: white; 
+            font-family: sans-serif; 
+        }
 
-  <!-- MindAR WebAR -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+        #confirmOverlay {
+            display: none; /* Hidden until sub-target is found */
+            z-index: 10000;
+        }
 
-  <script>
-let activityWindow = null; // global reference
+        .modal-box {
+            background: #333;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #FFD700;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
 
-AFRAME.registerComponent('auto-redirect', {
-  schema: { url: { type: 'string' } },
+        button { 
+            padding: 15px 30px; 
+            font-size: 1.2rem; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 8px; 
+            background: #FFD700; 
+            color: #333; 
+            font-weight: bold; 
+            margin: 10px;
+        }
 
-  init: function () {
-    this.hasTriggered = false;
+        button#noBtn {
+            background: #555;
+            color: white;
+        }
 
-    this.el.addEventListener('targetFound', () => {
-      if (this.hasTriggered) return;
+        #instructions { 
+            margin-top: 20px; 
+            text-align: center; 
+            max-width: 80%; 
+            line-height: 1.4; 
+        }
 
-      console.log("Sub-target recognized — loading website");
-
-      this.hasTriggered = true;
-
-      if (activityWindow && !activityWindow.closed) {
-        activityWindow.location.href = this.data.url;
-      } else {
-        console.warn("No pre-opened window available.");
-      }
-    });
-
-    this.el.addEventListener('targetLost', () => {
-      this.hasTriggered = false;
-    });
-  }
-});
-</script>
-
-  <style>
-    #overlay {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      z-index: 9999;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    button {
-      padding: 15px 30px;
-      font-size: 1.2rem;
-    }
-  </style>
-  <style>
-  html, body {
-    margin: 0;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  a-scene {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-  }
-</style>
-
+        html, body { 
+            margin: 0; 
+            height: 100%; 
+            overflow: hidden; 
+        }
+    </style>
 </head>
 
-<body style="margin: 0; overflow: hidden;">
+<body>
 
-<div id="overlay">
-  <button id="startButton">Start AR Experience</button>
-</div>
+    <div id="overlay">
+        <button id="startButton">Start AR Experience</button>
+        <div id="instructions">
+            Point at the poster.<br>
+            Walk closer to markers to trigger activities.
+        </div>
+    </div>
 
-<a-scene
-  mindar-image="imageTargetSrc: targets.mind; filterMinCF: 0.0001; filterBeta: 0.001;"
-  vr-mode-ui="enabled: false;"
-  device-orientation-permission-ui="enabled: false">
+    <div id="confirmOverlay">
+        <div class="modal-box">
+            <h2>Keystone Lake: Bull Creek Boat Ramp</h2>
+            <p>Would you like to go to the page for the Bull Creek Boat Ramp?</p>
+            <button id="yesBtn">Open Page</button>
+            <button id="noBtn">Not Now</button>
+        </div>
+    </div>
 
-  <a-assets>
-    <img id="mapImage" src="Keystone Wall Wrap Old Photos/LakeMapRecAreas.jpg">
-    <img id="markerImage" src="assets/marker.png">
-    <img id="infoImage" src="assets/infoImage.jpg">
-  </a-assets>
+    <a-scene
+        mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;"
+        vr-mode-ui="enabled: false;"
+        device-orientation-permission-ui="enabled: false"
+        renderer="colorManagement: false; logarithmicDepthBuffer: true;">
 
-  <!-- Image Target -->
-  <a-entity mindar-image-target="targetIndex: 0">
+        <a-assets>
+            <img id="markerImage" src="assets/marker.png" crossorigin="anonymous">
+        </a-assets>
 
-    <a-image
-    src="#mapImage"
-    position="0 0 0"
-    rotation="0 0 0" 
-    width="1"
-    height="1">
-    </a-image>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <a-image
-    id="mapMarker"
-    class="clickable"
-    src="#markerImage"
-    position="0.3 0.2 0.1"
-    rotation="0 0 0"
-    width="0.2"
-    height="0.2">
-    </a-image>
+        <a-entity mindar-image-target="targetIndex: 0">
+            <!-- Top-right marker (existing) -->
+                <a-image 
+                    src="#markerImage" 
+                    position="0.3 0.2 0.03" 
+                    width="0.15" height="0.15"
+                    material="shader: flat;"
+                    animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
+                </a-image>
 
-    <a-image
-    id="infoPanel"
-    src="#infoImage"
-    position="0 0 0.2"
-    rotation="0 0 0"
-    width="0.8"
-    height="0.6"
-    visible="false">
-    </a-image>
-  </a-entity>
+                <!-- Middle-left marker (new) -->
+                <a-image 
+                    src="#markerImage"
+                    position="-0.3 0.0 0.03"
+                    width="0.15" height="0.15"
+                    material="shader: flat;"
+                    animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
+                </a-image>
+        </a-entity>
 
-  <!-- Sub target -->
-  <a-entity 
-    mindar-image-target="targetIndex: 1"
-    auto-redirect="url: https://your-activity-site.com;">
-  </a-entity>
+        <a-entity id="subTarget" mindar-image-target="targetIndex: 1"></a-entity>
 
-  <a-camera position="0 0 0">
-    <a-entity
-      cursor="fuse: false; rayOrigin: mouse;"
-      raycaster="objects: .clickable">
-    </a-entity>
-  </a-camera>
+    </a-scene>
 
-</a-scene>
+    <script>
+        let hasTriggered = false;
+        const websiteURL = "https://www.recreation.gov/activitypass/AP22376"; //Bull Creek Boat Ramp Website Link for KSL
 
-<script>
-const button = document.querySelector('#startButton');
-const overlay = document.querySelector('#overlay');
+        const startButton = document.querySelector('#startButton');
+        const overlay = document.querySelector('#overlay');
+        const confirmOverlay = document.querySelector('#confirmOverlay');
+        const yesBtn = document.querySelector('#yesBtn');
+        const noBtn = document.querySelector('#noBtn');
+        const subTarget = document.querySelector('#subTarget');
 
-button.addEventListener('click', () => {
-  overlay.style.display = 'none';
+        /* 1. Start Button Logic */
+        startButton.addEventListener('click', () => {
+            overlay.style.display = 'none';
+            // Trigger resize to fix camera aspect ratio
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        });
 
-  // Pre-open blank tab (Safari-safe)
-  activityWindow = window.open('', '_blank');
+        /* 2. Sub-target Recognition */
+        subTarget.addEventListener('targetFound', () => {
+            if (hasTriggered) return;
+            
+            hasTriggered = true;
+            confirmOverlay.style.display = 'flex';
+        });
 
-  window.dispatchEvent(new Event('resize'));
-});
-</script>
+        // Optional: Reset trigger when user walks away so they can re-trigger it
+        subTarget.addEventListener('targetLost', () => {
+            // Uncomment the line below if you want the popup to reappear every time they walk up to it
+            hasTriggered = false; 
+        });
+
+        /* 3. Confirmation Buttons (User Interaction for Safari) */
+        yesBtn.addEventListener('click', () => {
+            confirmOverlay.style.display = 'none';
+            
+            // This is now a direct result of a click, so Safari will focus the new tab
+            window.open(websiteURL, '_blank');
+
+            // Optional: reset so they can trigger it again later
+            setTimeout(() => { hasTriggered = false; }, 3000); 
+        });
+
+        noBtn.addEventListener('click', () => {
+            confirmOverlay.style.display = 'none';
+            // Keep hasTriggered as true if you don't want it popping up immediately again
+            // Or set to false with a delay so it's not annoying
+            setTimeout(() => { hasTriggered = false; }, 5000);
+        });
+    </script>
 
 </body>
 </html>
