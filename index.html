@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AR Wall Prototype: Video Flow</title>
+    <title>AR Wall Prototype: 360 Flow</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -48,6 +48,15 @@
             color: white;
         }
 
+        /* Exit 360 button */
+        #exit360 {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 10001;
+            display: none;
+        }
+
         html, body { margin: 0; height: 100%; overflow: hidden; }
     </style>
 </head>
@@ -68,6 +77,9 @@
     </div>
 </div>
 
+<!-- Exit 360 -->
+<button id="exit360">Exit 360</button>
+
 <a-scene
     mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001;"
     vr-mode-ui="enabled: false;"
@@ -77,19 +89,14 @@
     <a-assets>
         <img id="markerImage" src="assets/marker.png">
 
-        <!-- VIDEO ASSET -->
-        <video 
-            id="brushVideo"
-            src="assets/Brush Creek Park.mp4"
-            preload="auto"
-            crossorigin="anonymous"
-            muted
-            playsinline
-            webkit-playsinline>
-        </video>
+        <!-- 360 IMAGE -->
+        <img id="panorama" src="assets/bullcreek360.jpg">
     </a-assets>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <!-- 360 SKY -->
+    <a-sky id="sky360" src="#panorama" visible="false"></a-sky>
+
+    <a-camera position="0 0 0" look-controls="enabled: true"></a-camera>
 
     <!-- MAIN TARGET -->
     <a-entity mindar-image-target="targetIndex: 0">
@@ -102,19 +109,7 @@
     </a-entity>
 
     <!-- SUB TARGET -->
-    <a-entity id="subTarget" mindar-image-target="targetIndex: 1">
-
-        <!-- VIDEO IN AR -->
-        <a-video 
-            id="videoPlane"
-            src="#brushVideo"
-            width="1"
-            height="0.6"
-            position="0 0 0.1"
-            visible="false">
-        </a-video>
-
-    </a-entity>
+    <a-entity id="subTarget" mindar-image-target="targetIndex: 1"></a-entity>
 
 </a-scene>
 
@@ -128,10 +123,10 @@ const overlay = document.querySelector('#overlay');
 const confirmOverlay = document.querySelector('#confirmOverlay');
 const yesBtn = document.querySelector('#yesBtn');
 const noBtn = document.querySelector('#noBtn');
+const exit360 = document.querySelector('#exit360');
 
 const subTarget = document.querySelector('#subTarget');
-const videoEl = document.querySelector('#brushVideo');
-const videoPlane = document.querySelector('#videoPlane');
+const sky = document.querySelector('#sky360');
 
 /* START BUTTON */
 startButton.addEventListener('click', () => {
@@ -139,32 +134,38 @@ startButton.addEventListener('click', () => {
     setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 });
 
-/* SUB TARGET FOUND */
+/* ENTER 360 MODE */
 subTarget.addEventListener('targetFound', () => {
     if (hasTriggered) return;
-
     hasTriggered = true;
 
-    console.log("Playing AR video");
+    console.log("Entering 360 mode");
 
-    videoPlane.setAttribute('visible', true);
+    // Hide AR targets
+    document.querySelectorAll('[mindar-image-target]')
+        .forEach(el => el.object3D.visible = false);
 
-    videoEl.currentTime = 0;
-    videoEl.play();
+    // Show 360
+    sky.setAttribute('visible', true);
+    exit360.style.display = 'block';
 });
 
-/* VIDEO FINISHED */
-videoEl.addEventListener('ended', () => {
-    console.log("Video ended");
+/* EXIT 360 MODE */
+exit360.addEventListener('click', () => {
+    console.log("Exiting 360 mode");
 
-    videoPlane.setAttribute('visible', false);
+    // Hide 360
+    sky.setAttribute('visible', false);
+    exit360.style.display = 'none';
 
-    confirmOverlay.style.display = 'flex';
-});
+    // Show AR again
+    document.querySelectorAll('[mindar-image-target]')
+        .forEach(el => el.object3D.visible = true);
 
-/* RESET WHEN LOST */
-subTarget.addEventListener('targetLost', () => {
-    videoEl.pause();
+    // Delay → show popup
+    setTimeout(() => {
+        confirmOverlay.style.display = 'flex';
+    }, 5000);
 });
 
 /* BUTTONS */
