@@ -188,8 +188,6 @@ exit360.addEventListener('click', async () => {
 
     // Fade to black
     fadeIn(500);
-
-    // Wait for fade
     await new Promise(res => setTimeout(res, 500));
 
     // Hide sky + exit button
@@ -207,14 +205,17 @@ exit360.addEventListener('click', async () => {
     const mindarSystem = sceneEl.systems['mindar-image-system'];
     mindarSystem.resume();
 
-    // Wait one frame so AR scene re-renders
-    requestAnimationFrame(() => {
-        // Fade back to AR
-        fadeOut(500);
-    });
+    // Wait for AR camera to render at least one frame
+    await new Promise(res => requestAnimationFrame(res));
 
-    // Delay 5s → show popup
-    setTimeout(() => { confirmOverlay.style.display = 'flex'; }, 5000);
+    // Tiny extra delay to ensure scene has fully re-rendered
+    await new Promise(res => setTimeout(res, 50));
+
+    // Fade back to AR
+    fadeOut(500);
+
+    // Only show popup after fade completes
+    setTimeout(() => { confirmOverlay.style.display = 'flex'; }, 500); 
 });
 
 /* BUTTONS */
