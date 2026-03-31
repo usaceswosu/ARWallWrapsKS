@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AR Wall Prototype: 360 Flow</title>
+    <title>AR Wall Prototype: 360 Flow with Fade</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -51,6 +51,18 @@
             display: none;
         }
 
+        /* Fade overlay */
+        #fadeOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: black;
+            z-index: 10002;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
         html, body { margin: 0; height: 100%; overflow: hidden; }
     </style>
 </head>
@@ -72,6 +84,7 @@
 </div>
 
 <button id="exit360">Exit 360</button>
+<div id="fadeOverlay"></div>
 
 <a-scene
     mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001;"
@@ -115,10 +128,21 @@ const confirmOverlay = document.querySelector('#confirmOverlay');
 const yesBtn = document.querySelector('#yesBtn');
 const noBtn = document.querySelector('#noBtn');
 const exit360 = document.querySelector('#exit360');
+const fadeOverlay = document.querySelector('#fadeOverlay');
 
 const subTarget = document.querySelector('#subTarget');
 const sky = document.querySelector('#sky360');
 const sceneEl = document.querySelector('a-scene');
+
+/* Fade helpers */
+function fadeIn(duration = 500) {
+    fadeOverlay.style.transition = `opacity ${duration}ms`;
+    fadeOverlay.style.opacity = '1';
+}
+function fadeOut(duration = 500) {
+    fadeOverlay.style.transition = `opacity ${duration}ms`;
+    fadeOverlay.style.opacity = '0';
+}
 
 /* START BUTTON */
 startButton.addEventListener('click', () => {
@@ -127,31 +151,46 @@ startButton.addEventListener('click', () => {
 });
 
 /* ENTER 360 MODE */
-subTarget.addEventListener('targetFound', () => {
+subTarget.addEventListener('targetFound', async () => {
     if (hasTriggered) return;
     hasTriggered = true;
 
     console.log("Entering 360 mode");
 
+    // Fade to black
+    fadeIn(500);
+
+    // Wait for fade
+    await new Promise(res => setTimeout(res, 500));
+
     // Hide AR targets
     document.querySelectorAll('[mindar-image-target]').forEach(el => el.object3D.visible = false);
 
-    // Hide MindAR UI (scanner)
+    // Hide MindAR UI
     const mindarUI = document.querySelector('div[id^="mindar-ui"]');
     if (mindarUI) mindarUI.style.display = 'none';
 
-    // Pause MindAR tracking so camera moves freely
+    // Pause MindAR tracking
     const mindarSystem = sceneEl.systems['mindar-image-system'];
     mindarSystem.pause();
 
     // Show 360 sky + exit button
     sky.setAttribute('visible', true);
     exit360.style.display = 'block';
+
+    // Fade back to 360
+    fadeOut(500);
 });
 
 /* EXIT 360 MODE */
-exit360.addEventListener('click', () => {
+exit360.addEventListener('click', async () => {
     console.log("Exiting 360 mode");
+
+    // Fade to black
+    fadeIn(500);
+
+    // Wait for fade
+    await new Promise(res => setTimeout(res, 500));
 
     // Hide sky + exit button
     sky.setAttribute('visible', false);
@@ -160,13 +199,16 @@ exit360.addEventListener('click', () => {
     // Show AR targets
     document.querySelectorAll('[mindar-image-target]').forEach(el => el.object3D.visible = true);
 
-    // Show MindAR UI again
+    // Show MindAR UI
     const mindarUI = document.querySelector('div[id^="mindar-ui"]');
     if (mindarUI) mindarUI.style.display = 'block';
 
     // Resume MindAR tracking
     const mindarSystem = sceneEl.systems['mindar-image-system'];
     mindarSystem.resume();
+
+    // Fade back to AR
+    fadeOut(500);
 
     // Delay 5s → show popup
     setTimeout(() => { confirmOverlay.style.display = 'flex'; }, 5000);
