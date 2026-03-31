@@ -207,8 +207,11 @@ exit360.addEventListener('click', async () => {
     const mindarSystem = sceneEl.systems['mindar-image-system'];
     mindarSystem.resume();
 
-    // Fade back to AR
-    fadeOut(500);
+    // Wait one frame so AR scene re-renders
+    requestAnimationFrame(() => {
+        // Fade back to AR
+        fadeOut(500);
+    });
 
     // Delay 5s → show popup
     setTimeout(() => { confirmOverlay.style.display = 'flex'; }, 5000);
