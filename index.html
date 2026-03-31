@@ -88,7 +88,7 @@
     <a-sky id="sky360" src="#panorama" visible="false"></a-sky>
 
     <!-- CAMERA -->
-    <a-camera id="camera" position="0 0 0" look-controls="enabled: true; touchEnabled: true; magicWindowTrackingEnabled: true"></a-camera>
+    <a-camera id="camera" look-controls="enabled: true; touchEnabled: true; magicWindowTrackingEnabled: true"></a-camera>
 
     <!-- MAIN TARGET -->
     <a-entity mindar-image-target="targetIndex: 0">
@@ -118,10 +118,7 @@ const exit360 = document.querySelector('#exit360');
 
 const subTarget = document.querySelector('#subTarget');
 const sky = document.querySelector('#sky360');
-const camera = document.querySelector('#camera');
-
-// MindAR UI
-const mindarUI = document.querySelector('#mindar-ui');
+const sceneEl = document.querySelector('a-scene');
 
 /* START BUTTON */
 startButton.addEventListener('click', () => {
@@ -137,13 +134,17 @@ subTarget.addEventListener('targetFound', () => {
     console.log("Entering 360 mode");
 
     // Hide AR targets
-    document.querySelectorAll('[mindar-image-target]')
-        .forEach(el => el.object3D.visible = false);
+    document.querySelectorAll('[mindar-image-target]').forEach(el => el.object3D.visible = false);
 
-    // Hide MindAR UI
+    // Hide MindAR UI (scanner)
+    const mindarUI = document.querySelector('div[id^="mindar-ui"]');
     if (mindarUI) mindarUI.style.display = 'none';
 
-    // Show 360 sky and exit button
+    // Pause MindAR tracking so camera moves freely
+    const mindarSystem = sceneEl.systems['mindar-image-system'];
+    mindarSystem.pause();
+
+    // Show 360 sky + exit button
     sky.setAttribute('visible', true);
     exit360.style.display = 'block';
 });
@@ -152,16 +153,20 @@ subTarget.addEventListener('targetFound', () => {
 exit360.addEventListener('click', () => {
     console.log("Exiting 360 mode");
 
-    // Hide sky
+    // Hide sky + exit button
     sky.setAttribute('visible', false);
     exit360.style.display = 'none';
 
     // Show AR targets
-    document.querySelectorAll('[mindar-image-target]')
-        .forEach(el => el.object3D.visible = true);
+    document.querySelectorAll('[mindar-image-target]').forEach(el => el.object3D.visible = true);
 
-    // Restore MindAR UI
+    // Show MindAR UI again
+    const mindarUI = document.querySelector('div[id^="mindar-ui"]');
     if (mindarUI) mindarUI.style.display = 'block';
+
+    // Resume MindAR tracking
+    const mindarSystem = sceneEl.systems['mindar-image-system'];
+    mindarSystem.resume();
 
     // Delay 5s → show popup
     setTimeout(() => { confirmOverlay.style.display = 'flex'; }, 5000);
