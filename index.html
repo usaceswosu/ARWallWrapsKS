@@ -15,24 +15,6 @@
             font-family: sans-serif;
         }
 
-        /* ── Fade overlay ── */
-        #fadeOverlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: black;
-            z-index: 20000;
-            opacity: 0;
-            pointer-events: none;                    /* transparent = passthrough clicks */
-            transition: opacity 0.5s ease;
-        }
-
-        /* When .fading class is applied, it becomes visible + blocks input */
-        #fadeOverlay.fading {
-            opacity: 1;
-            pointer-events: all;
-        }
-
         /* ── Start overlay ── */
         #overlay {
             position: fixed;
@@ -120,6 +102,7 @@
             z-index: 8000;
         }
 
+        /* The embedded A-Frame scene fills its parent */
         #panoramaScene {
             width: 100%;
             height: 100%;
@@ -136,6 +119,7 @@
             font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
+            border: none;
             border-radius: 8px;
             background: rgba(0,0,0,0.65);
             color: #FFD700;
@@ -143,6 +127,7 @@
             backdrop-filter: blur(4px);
         }
 
+        /* Generic start/action button */
         button#startButton {
             padding: 15px 30px;
             font-size: 1.2rem;
@@ -157,9 +142,6 @@
 </head>
 
 <body>
-
-    <!-- ── Fade overlay (sits above everything) ── -->
-    <div id="fadeOverlay"></div>
 
     <!-- ── Start screen ── -->
     <div id="overlay">
@@ -191,7 +173,7 @@
             device-orientation-permission-ui="enabled: false"
             renderer="colorManagement: false;">
             <a-assets>
-                <img id="panoramaImg" src="assets/panorama.png" crossorigin="anonymous">
+                <img id="panoramaImg" src="assets/panorama.jpg" crossorigin="anonymous">
             </a-assets>
             <a-sky src="#panoramaImg" rotation="0 -90 0"></a-sky>
             <a-camera look-controls="enabled: true; touchEnabled: true;" wasd-controls="enabled: false"
@@ -215,6 +197,7 @@
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
+            <!-- Top-right marker -->
             <a-image
                 src="#markerImage"
                 position="0.3 0.2 0.03"
@@ -222,6 +205,7 @@
                 material="shader: flat;"
                 animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
             </a-image>
+            <!-- Middle-left marker -->
             <a-image
                 src="#markerImage"
                 position="-0.3 0.0 0.03"
@@ -241,87 +225,43 @@
         let hasTriggered = false;
 
         /* ── Element refs ── */
-        const overlay            = document.querySelector('#overlay');
-        const startButton        = document.querySelector('#startButton');
-        const confirmOverlay     = document.querySelector('#confirmOverlay');
-        const btn360             = document.querySelector('#btn360');
-        const btnWebsite         = document.querySelector('#btnWebsite');
-        const btnNone            = document.querySelector('#btnNone');
-        const subTarget          = document.querySelector('#subTarget');
-        const panoramaContainer  = document.querySelector('#panoramaContainer');
-        const exitPanoramaBtn    = document.querySelector('#exitPanorama');
-        const arScene            = document.querySelector('#arScene');
-        const fadeOverlay        = document.querySelector('#fadeOverlay');
-        const panoramaImg        = document.querySelector('#panoramaImg');
+        const overlay         = document.querySelector('#overlay');
+        const startButton     = document.querySelector('#startButton');
+        const confirmOverlay  = document.querySelector('#confirmOverlay');
+        const btn360          = document.querySelector('#btn360');
+        const btnWebsite      = document.querySelector('#btnWebsite');
+        const btnNone         = document.querySelector('#btnNone');
+        const subTarget       = document.querySelector('#subTarget');
+        const panoramaContainer = document.querySelector('#panoramaContainer');
+        const exitPanorama    = document.querySelector('#exitPanorama');
+        const arScene         = document.querySelector('#arScene');
 
-        /* ── Fade helpers ── */
-        // FADE_MS must match the CSS transition duration (0.5s = 500ms)
-        const FADE_MS = 500;
-
-        // Returns a promise that resolves once the screen has faded TO black
-        function fadeToBlack() {
-            return new Promise(resolve => {
-                fadeOverlay.classList.add('fading');
-                setTimeout(resolve, FADE_MS);
-            });
+        /* ── Helpers ── */
+        function showConfirm() {
+            confirmOverlay.style.display = 'flex';
         }
 
-        // Returns a promise that resolves once the screen has faded BACK to clear
-        function fadeToClear() {
-            return new Promise(resolve => {
-                fadeOverlay.classList.remove('fading');
-                setTimeout(resolve, FADE_MS);
-            });
-        }
-
-        // Waits for a given <img> element to be fully loaded (handles cached images too)
-        function waitForImage(imgEl) {
-            return new Promise(resolve => {
-                if (imgEl.complete && imgEl.naturalWidth > 0) {
-                    resolve();          // Already cached and decoded
-                } else {
-                    imgEl.addEventListener('load',  resolve, { once: true });
-                    imgEl.addEventListener('error', resolve, { once: true }); // Fail gracefully
-                }
-            });
-        }
-
-        /* ── Transition: AR → 360 ── */
-        async function enterPanorama() {
+        function hideConfirm() {
             confirmOverlay.style.display = 'none';
-
-            await fadeToBlack();
-
-            // Show panorama container while screen is black
-            arScene.style.display        = 'none';
-            panoramaContainer.style.display = 'block';
-            window.dispatchEvent(new Event('resize'));
-
-            // Wait until the panorama image has actually decoded
-            await waitForImage(panoramaImg);
-
-            // Small extra buffer for A-Frame to finish its first render tick
-            await new Promise(r => setTimeout(r, 150));
-
-            await fadeToClear();
         }
 
-        /* ── Transition: 360 → AR ── */
-        async function exitPanoramaView() {
-            await fadeToBlack();
+        function enterPanorama() {
+            hideConfirm();
+            // Pause AR camera stream to save resources while in 360 view
+            arScene.style.display = 'none';
+            panoramaContainer.style.display = 'block';
+            // Let the embedded scene resize to fill the container
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+        }
 
-            // Swap views while screen is black
+        function exitPanoramaView() {
             panoramaContainer.style.display = 'none';
-            arScene.style.display           = 'block';
-            window.dispatchEvent(new Event('resize'));
-
-            // MindAR needs a moment to re-initialise its canvas and camera feed.
-            // 800 ms is a safe minimum; increase if you notice AR not ready on slower devices.
-            await new Promise(r => setTimeout(r, 800));
-
-            await fadeToClear();
-
-            hasTriggered = false;   // Ready to re-trigger
+            arScene.style.display = 'block';
+            // Give MindAR a moment to re-acquire the camera feed
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+                hasTriggered = false;   // Ready to re-trigger
+            }, 200);
         }
 
         /* ── 1. Start button ── */
@@ -334,7 +274,7 @@
         subTarget.addEventListener('targetFound', () => {
             if (hasTriggered) return;
             hasTriggered = true;
-            confirmOverlay.style.display = 'flex';
+            showConfirm();
         });
 
         subTarget.addEventListener('targetLost', () => {
@@ -347,18 +287,20 @@
         });
 
         btnWebsite.addEventListener('click', () => {
-            confirmOverlay.style.display = 'none';
+            hideConfirm();
             window.open(websiteURL, '_blank');
+            // Allow re-trigger after a short cooldown
             setTimeout(() => { hasTriggered = false; }, 3000);
         });
 
         btnNone.addEventListener('click', () => {
-            confirmOverlay.style.display = 'none';
+            hideConfirm();
+            // Short cooldown so the modal doesn't instantly re-appear
             setTimeout(() => { hasTriggered = false; }, 4000);
         });
 
         /* ── 4. Exit panorama ── */
-        exitPanoramaBtn.addEventListener('click', () => {
+        exitPanorama.addEventListener('click', () => {
             exitPanoramaView();
         });
     </script>
