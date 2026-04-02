@@ -88,7 +88,6 @@
 
 <a-scene
     ar-ready-signal
-    ar-paused-signal
     mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001;"
     vr-mode-ui="enabled: false;"
     device-orientation-permission-ui="enabled: false;"
@@ -134,18 +133,6 @@ AFRAME.registerComponent('ar-ready-signal', {
   }
 });
 
-AFRAME.registerComponent('ar-paused-signal', {
-  init: function () {
-    this.hasSignaled = false;
-  },
-  tick: function () {
-    const mindar = this.el.systems['mindar-image-system'];
-    if (!this.hasSignaled && mindar && !mindar.isRunning()) {
-      this.el.emit('arPaused');
-      this.hasSignaled = true;
-    }
-  }
-});
 </script>
     
 <script>
@@ -190,29 +177,27 @@ subTarget.addEventListener('targetFound', async () => {
     fadeIn(500);
     await new Promise(res => setTimeout(res, 500));
 
-    // Reset pause signal
-    sceneEl.components['ar-paused-signal'].hasSignaled = false;
+    const mindarSystem = sceneEl.systems['mindar-image-system'];
 
     // Pause AR
-    const mindarSystem = sceneEl.systems['mindar-image-system'];
     mindarSystem.pause();
 
-    // Wait until AR is actually paused
-    sceneEl.addEventListener('arPaused', () => {
-        console.log("AR paused, switching to 360");
+    // 🔑 REQUIRED: let camera + renderer detach cleanly
+    await new Promise(res => setTimeout(res, 300));
 
-        // Hide AR content
-        document.querySelectorAll('[mindar-image-target]').forEach(el => el.object3D.visible = false);
+    console.log("Switching to 360");
 
-        const mindarUI = document.querySelector('div[id^="mindar-ui"]');
-        if (mindarUI) mindarUI.style.display = 'none';
+    // Hide AR content AFTER pause settles
+    document.querySelectorAll('[mindar-image-target]').forEach(el => el.object3D.visible = false);
 
-        // Show 360
-        sky.setAttribute('visible', true);
-        exit360.style.display = 'block';
+    const mindarUI = document.querySelector('div[id^="mindar-ui"]');
+    if (mindarUI) mindarUI.style.display = 'none';
 
-        fadeOut(500);
-    }, { once: true });
+    // Show 360
+    sky.setAttribute('visible', true);
+    exit360.style.display = 'block';
+
+    fadeOut(500);
 });
 
 /* EXIT 360 MODE */
@@ -222,22 +207,25 @@ exit360.addEventListener('click', async () => {
     fadeIn(500);
     await new Promise(res => setTimeout(res, 500));
 
-    // Hide 360
+    // Hide 360 FIRST
     sky.setAttribute('visible', false);
     exit360.style.display = 'none';
 
     // Reset ready signal
     sceneEl.components['ar-ready-signal'].hasSignaled = false;
 
-    // Resume AR
     const mindarSystem = sceneEl.systems['mindar-image-system'];
+
+    // Resume AR
     mindarSystem.resume();
 
-    // Wait until AR is actually rendering again
-    sceneEl.addEventListener('arReady', () => {
+    sceneEl.addEventListener('arReady', async () => {
         console.log("AR resumed, restoring scene");
 
-        // Show AR content
+        // Small buffer for render stability
+        await new Promise(res => setTimeout(res, 50));
+
+        // Restore AR visuals
         document.querySelectorAll('[mindar-image-target]').forEach(el => el.object3D.visible = true);
 
         const mindarUI = document.querySelector('div[id^="mindar-ui"]');
@@ -245,7 +233,6 @@ exit360.addEventListener('click', async () => {
 
         fadeOut(500);
 
-        // Show popup AFTER fade completes
         setTimeout(() => {
             confirmOverlay.style.display = 'flex';
         }, 500);
