@@ -8,70 +8,142 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
     <style>
-        #overlay, #confirmOverlay { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: rgba(0,0,0,0.8); 
-            z-index: 9999; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            flex-direction: column; 
-            color: white; 
-            font-family: sans-serif; 
+        html, body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: sans-serif;
         }
 
-        #confirmOverlay {
-            display: none; /* Hidden until sub-target is found */
-            z-index: 10000;
-        }
-
-        .modal-box {
-            background: #333;
-            padding: 30px;
-            border-radius: 15px;
-            border: 2px solid #FFD700;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-
-        button { 
-            padding: 15px 30px; 
-            font-size: 1.2rem; 
-            cursor: pointer; 
-            border: none; 
-            border-radius: 8px; 
-            background: #FFD700; 
-            color: #333; 
-            font-weight: bold; 
-            margin: 10px;
-        }
-
-        button#noBtn {
-            background: #555;
+        /* ── Start overlay ── */
+        #overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
             color: white;
         }
 
-        #instructions { 
-            margin-top: 20px; 
-            text-align: center; 
-            max-width: 80%; 
-            line-height: 1.4; 
+        #instructions {
+            margin-top: 20px;
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.4;
         }
 
-        html, body { 
-            margin: 0; 
-            height: 100%; 
-            overflow: hidden; 
+        /* ── Confirm overlay ── */
+        #confirmOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-box {
+            background: #222;
+            padding: 30px 24px;
+            border-radius: 16px;
+            border: 2px solid #FFD700;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.6);
+            max-width: 320px;
+            width: 90%;
+            color: white;
+        }
+
+        .modal-box h2 {
+            margin: 0 0 8px;
+            font-size: 1.2rem;
+            color: #FFD700;
+        }
+
+        .modal-box p {
+            font-size: 0.95rem;
+            color: #ccc;
+            margin: 0 0 20px;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 13px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: opacity 0.15s;
+        }
+        .btn:active { opacity: 0.75; }
+
+        .btn-gold   { background: #FFD700; color: #222; }
+        .btn-blue   { background: #3a8fd4; color: white; }
+        .btn-muted  { background: #555;    color: #ccc; }
+
+        /* ── 360 panorama container ── */
+        #panoramaContainer {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 8000;
+        }
+
+        /* The embedded A-Frame scene fills its parent */
+        #panoramaScene {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Exit button floats over the panorama */
+        #exitPanorama {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 8500;
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.65);
+            color: #FFD700;
+            border: 2px solid #FFD700;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Generic start/action button */
+        button#startButton {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background: #FFD700;
+            color: #333;
+            font-weight: bold;
         }
     </style>
 </head>
 
 <body>
 
+    <!-- ── Start screen ── -->
     <div id="overlay">
         <button id="startButton">Start AR Experience</button>
         <div id="instructions">
@@ -80,16 +152,39 @@
         </div>
     </div>
 
+    <!-- ── Sub-target action modal ── -->
     <div id="confirmOverlay">
         <div class="modal-box">
             <h2>Keystone Lake: Bull Creek Boat Ramp</h2>
-            <p>Would you like to go to the page for the Bull Creek Boat Ramp?</p>
-            <button id="yesBtn">Open Page</button>
-            <button id="noBtn">Not Now</button>
+            <p>What would you like to do?</p>
+            <div class="btn-row">
+                <button class="btn btn-gold"  id="btn360">🔭 View 360° Campground</button>
+                <button class="btn btn-blue"  id="btnWebsite">🌐 Open Boat Ramp Page</button>
+                <button class="btn btn-muted" id="btnNone">✕ Stay Here</button>
+            </div>
         </div>
     </div>
 
-    <a-scene
+    <!-- ── 360° panorama view ── -->
+    <div id="panoramaContainer">
+        <a-scene id="panoramaScene"
+            embedded
+            vr-mode-ui="enabled: false"
+            device-orientation-permission-ui="enabled: false"
+            renderer="colorManagement: false;">
+            <a-assets>
+                <img id="panoramaImg" src="assets/panorama.png" crossorigin="anonymous">
+            </a-assets>
+            <a-sky src="#panoramaImg" rotation="0 -90 0"></a-sky>
+            <a-camera look-controls="enabled: true; touchEnabled: true;" wasd-controls="enabled: false"
+                      position="0 0 0">
+            </a-camera>
+        </a-scene>
+        <button id="exitPanorama">← Back to AR</button>
+    </div>
+
+    <!-- ── Main AR scene ── -->
+    <a-scene id="arScene"
         mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;"
         vr-mode-ui="enabled: false;"
         device-orientation-permission-ui="enabled: false"
@@ -102,23 +197,22 @@
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
-            <!-- Top-right marker (existing) -->
-                <a-image 
-                    src="#markerImage" 
-                    position="0.3 0.2 0.03" 
-                    width="0.15" height="0.15"
-                    material="shader: flat;"
-                    animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
-                </a-image>
-
-                <!-- Middle-left marker (new) -->
-                <a-image 
-                    src="#markerImage"
-                    position="-0.3 0.0 0.03"
-                    width="0.15" height="0.15"
-                    material="shader: flat;"
-                    animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
-                </a-image>
+            <!-- Top-right marker -->
+            <a-image
+                src="#markerImage"
+                position="0.3 0.2 0.03"
+                width="0.15" height="0.15"
+                material="shader: flat;"
+                animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
+            </a-image>
+            <!-- Middle-left marker -->
+            <a-image
+                src="#markerImage"
+                position="-0.3 0.0 0.03"
+                width="0.15" height="0.15"
+                material="shader: flat;"
+                animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
+            </a-image>
         </a-entity>
 
         <a-entity id="subTarget" mindar-image-target="targetIndex: 1"></a-entity>
@@ -126,55 +220,88 @@
     </a-scene>
 
     <script>
+        const websiteURL = "https://www.recreation.gov/activitypass/AP22376";
+
         let hasTriggered = false;
-        const websiteURL = "https://www.recreation.gov/activitypass/AP22376"; //Bull Creek Boat Ramp Website Link for KSL
 
-        const startButton = document.querySelector('#startButton');
-        const overlay = document.querySelector('#overlay');
-        const confirmOverlay = document.querySelector('#confirmOverlay');
-        const yesBtn = document.querySelector('#yesBtn');
-        const noBtn = document.querySelector('#noBtn');
-        const subTarget = document.querySelector('#subTarget');
+        /* ── Element refs ── */
+        const overlay         = document.querySelector('#overlay');
+        const startButton     = document.querySelector('#startButton');
+        const confirmOverlay  = document.querySelector('#confirmOverlay');
+        const btn360          = document.querySelector('#btn360');
+        const btnWebsite      = document.querySelector('#btnWebsite');
+        const btnNone         = document.querySelector('#btnNone');
+        const subTarget       = document.querySelector('#subTarget');
+        const panoramaContainer = document.querySelector('#panoramaContainer');
+        const exitPanorama    = document.querySelector('#exitPanorama');
+        const arScene         = document.querySelector('#arScene');
 
-        /* 1. Start Button Logic */
-        startButton.addEventListener('click', () => {
-            overlay.style.display = 'none';
-            // Trigger resize to fix camera aspect ratio
+        /* ── Helpers ── */
+        function showConfirm() {
+            confirmOverlay.style.display = 'flex';
+        }
+
+        function hideConfirm() {
+            confirmOverlay.style.display = 'none';
+        }
+
+        function enterPanorama() {
+            hideConfirm();
+            // Pause AR camera stream to save resources while in 360 view
+            arScene.style.display = 'none';
+            panoramaContainer.style.display = 'block';
+            // Let the embedded scene resize to fill the container
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+        }
+
+        function exitPanoramaView() {
+            panoramaContainer.style.display = 'none';
+            arScene.style.display = 'block';
+            // Give MindAR a moment to re-acquire the camera feed
             setTimeout(() => {
                 window.dispatchEvent(new Event('resize'));
-            }, 100);
+                hasTriggered = false;   // Ready to re-trigger
+            }, 200);
+        }
+
+        /* ── 1. Start button ── */
+        startButton.addEventListener('click', () => {
+            overlay.style.display = 'none';
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
         });
 
-        /* 2. Sub-target Recognition */
+        /* ── 2. Sub-target events ── */
         subTarget.addEventListener('targetFound', () => {
             if (hasTriggered) return;
-            
             hasTriggered = true;
-            confirmOverlay.style.display = 'flex';
+            showConfirm();
         });
 
-        // Optional: Reset trigger when user walks away so they can re-trigger it
         subTarget.addEventListener('targetLost', () => {
-            // Uncomment the line below if you want the popup to reappear every time they walk up to it
-            hasTriggered = false; 
+            hasTriggered = false;
         });
 
-        /* 3. Confirmation Buttons (User Interaction for Safari) */
-        yesBtn.addEventListener('click', () => {
-            confirmOverlay.style.display = 'none';
-            
-            // This is now a direct result of a click, so Safari will focus the new tab
+        /* ── 3. Modal buttons ── */
+        btn360.addEventListener('click', () => {
+            enterPanorama();
+        });
+
+        btnWebsite.addEventListener('click', () => {
+            hideConfirm();
             window.open(websiteURL, '_blank');
-
-            // Optional: reset so they can trigger it again later
-            setTimeout(() => { hasTriggered = false; }, 3000); 
+            // Allow re-trigger after a short cooldown
+            setTimeout(() => { hasTriggered = false; }, 3000);
         });
 
-        noBtn.addEventListener('click', () => {
-            confirmOverlay.style.display = 'none';
-            // Keep hasTriggered as true if you don't want it popping up immediately again
-            // Or set to false with a delay so it's not annoying
-            setTimeout(() => { hasTriggered = false; }, 5000);
+        btnNone.addEventListener('click', () => {
+            hideConfirm();
+            // Short cooldown so the modal doesn't instantly re-appear
+            setTimeout(() => { hasTriggered = false; }, 4000);
+        });
+
+        /* ── 4. Exit panorama ── */
+        exitPanorama.addEventListener('click', () => {
+            exitPanoramaView();
         });
     </script>
 
