@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AR Wall Prototype: 360 Flow with Fade</title>
+    <title>AR Wall Prototype: Smooth Redirect</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -9,19 +9,25 @@
 
     <style>
         #overlay, #confirmOverlay { 
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            color: white;
-            font-family: sans-serif;
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.8); 
+            z-index: 9999; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            flex-direction: column; 
+            color: white; 
+            font-family: sans-serif; 
         }
 
-        #confirmOverlay { display: none; z-index: 10000; }
+        #confirmOverlay {
+            display: none; /* Hidden until sub-target is found */
+            z-index: 10000;
+        }
 
         .modal-box {
             background: #333;
@@ -29,229 +35,148 @@
             border-radius: 15px;
             border: 2px solid #FFD700;
             text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         button { 
-            padding: 15px 30px;
-            font-size: 1.2rem;
-            border-radius: 8px;
-            background: #FFD700;
+            padding: 15px 30px; 
+            font-size: 1.2rem; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 8px; 
+            background: #FFD700; 
+            color: #333; 
+            font-weight: bold; 
             margin: 10px;
-            cursor: pointer;
         }
 
-        #noBtn { background: #555; color: white; }
-
-        /* Exit 360 button */
-        #exit360 {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            z-index: 10001;
-            display: none;
+        button#noBtn {
+            background: #555;
+            color: white;
         }
 
-        /* Fade overlay */
-        #fadeOverlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: black;
-            z-index: 10002;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
+        #instructions { 
+            margin-top: 20px; 
+            text-align: center; 
+            max-width: 80%; 
+            line-height: 1.4; 
         }
 
-        html, body { margin: 0; height: 100%; overflow: hidden; }
+        html, body { 
+            margin: 0; 
+            height: 100%; 
+            overflow: hidden; 
+        }
     </style>
 </head>
 
 <body>
 
-<div id="overlay">
-    <button id="startButton">Start AR Experience</button>
-    <div>Point at the poster and move closer to trigger activity.</div>
-</div>
-
-<div id="confirmOverlay">
-    <div class="modal-box">
-        <h2>Keystone Lake: Bull Creek Boat Ramp</h2>
-        <p>Would you like to go to the page?</p>
-        <button id="yesBtn">Open Page</button>
-        <button id="noBtn">Not Now</button>
+    <div id="overlay">
+        <button id="startButton">Start AR Experience</button>
+        <div id="instructions">
+            Point at the poster.<br>
+            Walk closer to markers to trigger activities.
+        </div>
     </div>
-</div>
 
-<button id="exit360">Exit 360</button>
-<div id="fadeOverlay"></div>
+    <div id="confirmOverlay">
+        <div class="modal-box">
+            <h2>Keystone Lake: Bull Creek Boat Ramp</h2>
+            <p>Would you like to go to the page for the Bull Creek Boat Ramp?</p>
+            <button id="yesBtn">Open Page</button>
+            <button id="noBtn">Not Now</button>
+        </div>
+    </div>
 
-<a-scene
-    ar-ready-signal
-    mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001;"
-    vr-mode-ui="enabled: false;"
-    device-orientation-permission-ui="enabled: false;"
-    renderer="colorManagement: false; logarithmicDepthBuffer: true;">
+    <a-scene
+        mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;"
+        vr-mode-ui="enabled: false;"
+        device-orientation-permission-ui="enabled: false"
+        renderer="colorManagement: false; logarithmicDepthBuffer: true;">
 
-    <a-assets>
-        <img id="markerImage" src="assets/marker.png">
-        <img id="panorama" src="assets/panorama.jpg">
-    </a-assets>
+        <a-assets>
+            <img id="markerImage" src="assets/marker.png" crossorigin="anonymous">
+        </a-assets>
 
-    <!-- 360 SKY -->
-    <a-sky id="sky360" src="#panorama" visible="false"></a-sky>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- CAMERA -->
-    <a-camera id="camera" look-controls="enabled: true; touchEnabled: true; magicWindowTrackingEnabled: true"></a-camera>
+        <a-entity mindar-image-target="targetIndex: 0">
+            <!-- Top-right marker (existing) -->
+                <a-image 
+                    src="#markerImage" 
+                    position="0.3 0.2 0.03" 
+                    width="0.15" height="0.15"
+                    material="shader: flat;"
+                    animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
+                </a-image>
 
-    <!-- MAIN TARGET -->
-    <a-entity mindar-image-target="targetIndex: 0">
-        <a-image 
-            src="#markerImage"
-            position="0.3 0.2 0.03"
-            width="0.15" height="0.15"
-            animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
-        </a-image>
-    </a-entity>
+                <!-- Middle-left marker (new) -->
+                <a-image 
+                    src="#markerImage"
+                    position="-0.3 0.0 0.03"
+                    width="0.15" height="0.15"
+                    material="shader: flat;"
+                    animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
+                </a-image>
+        </a-entity>
 
-    <!-- SUB TARGET -->
-    <a-entity id="subTarget" mindar-image-target="targetIndex: 1"></a-entity>
+        <a-entity id="subTarget" mindar-image-target="targetIndex: 1"></a-entity>
 
-</a-scene>
+    </a-scene>
 
-<script>
-AFRAME.registerComponent('ar-ready-signal', {
-  init: function () {
-    this.hasSignaled = false;
-  },
-  tick: function () {
-    const mindar = this.el.systems['mindar-image-system'];
-    if (!this.hasSignaled && mindar && mindar.isRunning()) {
-      this.el.emit('arReady');
-      this.hasSignaled = true;
-    }
-  }
-});
+    <script>
+        let hasTriggered = false;
+        const websiteURL = "https://www.recreation.gov/activitypass/AP22376"; //Bull Creek Boat Ramp Website Link for KSL
 
-</script>
-    
-<script>
-let hasTriggered = false;
-const websiteURL = "https://www.recreation.gov/activitypass/AP22376";
+        const startButton = document.querySelector('#startButton');
+        const overlay = document.querySelector('#overlay');
+        const confirmOverlay = document.querySelector('#confirmOverlay');
+        const yesBtn = document.querySelector('#yesBtn');
+        const noBtn = document.querySelector('#noBtn');
+        const subTarget = document.querySelector('#subTarget');
 
-const startButton = document.querySelector('#startButton');
-const overlay = document.querySelector('#overlay');
-const confirmOverlay = document.querySelector('#confirmOverlay');
-const yesBtn = document.querySelector('#yesBtn');
-const noBtn = document.querySelector('#noBtn');
-const exit360 = document.querySelector('#exit360');
-const fadeOverlay = document.querySelector('#fadeOverlay');
+        /* 1. Start Button Logic */
+        startButton.addEventListener('click', () => {
+            overlay.style.display = 'none';
+            // Trigger resize to fix camera aspect ratio
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        });
 
-const subTarget = document.querySelector('#subTarget');
-const sky = document.querySelector('#sky360');
-const sceneEl = document.querySelector('a-scene');
-
-/* Fade helpers */
-function fadeIn(duration = 500) {
-    fadeOverlay.style.transition = `opacity ${duration}ms`;
-    fadeOverlay.style.opacity = '1';
-}
-function fadeOut(duration = 500) {
-    fadeOverlay.style.transition = `opacity ${duration}ms`;
-    fadeOverlay.style.opacity = '0';
-}
-
-/* START BUTTON */
-startButton.addEventListener('click', () => {
-    overlay.style.display = 'none';
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
-});
-
-/* ENTER 360 MODE */
-subTarget.addEventListener('targetFound', async () => {
-    if (hasTriggered) return;
-    hasTriggered = true;
-
-    console.log("Entering 360 mode");
-
-    fadeIn(500);
-    await new Promise(res => setTimeout(res, 500));
-
-    const mindarSystem = sceneEl.systems['mindar-image-system'];
-
-    // Pause AR
-    mindarSystem.pause();
-
-    // 🔑 REQUIRED: let camera + renderer detach cleanly
-    await new Promise(res => setTimeout(res, 300));
-
-    console.log("Switching to 360");
-
-    // Hide AR content AFTER pause settles
-    document.querySelectorAll('[mindar-image-target]').forEach(el => el.object3D.visible = false);
-
-    const mindarUI = document.querySelector('div[id^="mindar-ui"]');
-    if (mindarUI) mindarUI.style.display = 'none';
-
-    // Show 360
-    sky.setAttribute('visible', true);
-    exit360.style.display = 'block';
-
-    fadeOut(500);
-});
-
-/* EXIT 360 MODE */
-exit360.addEventListener('click', async () => {
-    console.log("Exiting 360 mode");
-
-    fadeIn(500);
-    await new Promise(res => setTimeout(res, 500));
-
-    // Hide 360 FIRST
-    sky.setAttribute('visible', false);
-    exit360.style.display = 'none';
-
-    // Reset ready signal
-    sceneEl.components['ar-ready-signal'].hasSignaled = false;
-
-    const mindarSystem = sceneEl.systems['mindar-image-system'];
-
-    // Resume AR
-    mindarSystem.resume();
-
-    sceneEl.addEventListener('arReady', async () => {
-        console.log("AR resumed, restoring scene");
-
-        // Small buffer for render stability
-        await new Promise(res => setTimeout(res, 50));
-
-        // Restore AR visuals
-        document.querySelectorAll('[mindar-image-target]').forEach(el => el.object3D.visible = true);
-
-        const mindarUI = document.querySelector('div[id^="mindar-ui"]');
-        if (mindarUI) mindarUI.style.display = 'block';
-
-        fadeOut(500);
-
-        setTimeout(() => {
+        /* 2. Sub-target Recognition */
+        subTarget.addEventListener('targetFound', () => {
+            if (hasTriggered) return;
+            
+            hasTriggered = true;
             confirmOverlay.style.display = 'flex';
-        }, 500);
+        });
 
-    }, { once: true });
-});
+        // Optional: Reset trigger when user walks away so they can re-trigger it
+        subTarget.addEventListener('targetLost', () => {
+            // Uncomment the line below if you want the popup to reappear every time they walk up to it
+            hasTriggered = false; 
+        });
 
-/* BUTTONS */
-yesBtn.addEventListener('click', () => {
-    confirmOverlay.style.display = 'none';
-    window.open(websiteURL, '_blank');
-    setTimeout(() => { hasTriggered = false; }, 3000);
-});
+        /* 3. Confirmation Buttons (User Interaction for Safari) */
+        yesBtn.addEventListener('click', () => {
+            confirmOverlay.style.display = 'none';
+            
+            // This is now a direct result of a click, so Safari will focus the new tab
+            window.open(websiteURL, '_blank');
 
-noBtn.addEventListener('click', () => {
-    confirmOverlay.style.display = 'none';
-    setTimeout(() => { hasTriggered = false; }, 5000);
-});
-</script>
+            // Optional: reset so they can trigger it again later
+            setTimeout(() => { hasTriggered = false; }, 3000); 
+        });
+
+        noBtn.addEventListener('click', () => {
+            confirmOverlay.style.display = 'none';
+            // Keep hasTriggered as true if you don't want it popping up immediately again
+            // Or set to false with a delay so it's not annoying
+            setTimeout(() => { hasTriggered = false; }, 5000);
+        });
+    </script>
 
 </body>
 </html>
