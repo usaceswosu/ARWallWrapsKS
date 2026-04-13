@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AR Wall Prototype: Smooth Redirect</title>
+    <title>AR Wall Prototype: Multi Sub-Target</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -36,8 +36,8 @@
             line-height: 1.4;
         }
 
-        /* ── Confirm overlay ── */
-        #confirmOverlay {
+        /* ── Confirm overlays (shared style) ── */
+        .confirmOverlay {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
@@ -102,13 +102,11 @@
             z-index: 8000;
         }
 
-        /* The embedded A-Frame scene fills its parent */
         #panoramaScene {
             width: 100%;
             height: 100%;
         }
 
-        /* Exit button floats over the panorama */
         #exitPanorama {
             position: fixed;
             top: 18px;
@@ -127,7 +125,6 @@
             backdrop-filter: blur(4px);
         }
 
-        /* Generic start/action button */
         button#startButton {
             padding: 15px 30px;
             font-size: 1.2rem;
@@ -152,20 +149,54 @@
         </div>
     </div>
 
-    <!-- ── Sub-target action modal ── -->
-    <div id="confirmOverlay">
+
+    <!-- ══════════════════════════════════════════
+         MODAL 1 — Bull Creek Boat Ramp (top-right)
+    ══════════════════════════════════════════ -->
+    <div id="confirmOverlay1" class="confirmOverlay">
         <div class="modal-box">
             <h2>Keystone Lake: Bull Creek Boat Ramp</h2>
             <p>What would you like to do?</p>
             <div class="btn-row">
-                <button class="btn btn-gold"  id="btn360">🔭 View 360° Campground</button>
-                <button class="btn btn-blue"  id="btnWebsite">🌐 Open Boat Ramp Page</button>
-                <button class="btn btn-muted" id="btnNone">✕ Stay Here</button>
+                <button class="btn btn-gold"  id="btn360-1">🔭 View 360° Campground</button>
+                <button class="btn btn-blue"  id="btnWebsite-1">🌐 Open Boat Ramp Page</button>
+                <button class="btn btn-muted" id="btnNone-1">✕ Stay Here</button>
             </div>
         </div>
     </div>
 
-    <!-- ── 360° panorama view ── -->
+    <!-- ══════════════════════════════════════════
+         MODAL 2 — Appalachia Bay (middle-left)
+    ══════════════════════════════════════════ -->
+    <div id="confirmOverlay2" class="confirmOverlay">
+        <div class="modal-box">
+            <h2>Keystone Lake: Appalachia Bay</h2>
+            <p>What would you like to do?</p>
+            <div class="btn-row">
+                <button class="btn btn-gold"  id="btn360-2">🔭 View 360° Campground</button>
+                <button class="btn btn-blue"  id="btnWebsite-2">🌐 Open Appalachia Bay Page</button>
+                <button class="btn btn-muted" id="btnNone-2">✕ Stay Here</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         MODAL 3 — Walnut Creek (top-left)
+    ══════════════════════════════════════════ -->
+    <div id="confirmOverlay3" class="confirmOverlay">
+        <div class="modal-box">
+            <h2>Keystone Lake: Walnut Creek</h2>
+            <p>What would you like to do?</p>
+            <div class="btn-row">
+                <button class="btn btn-gold"  id="btn360-3">🔭 View 360° Campground</button>
+                <button class="btn btn-blue"  id="btnWebsite-3">🌐 Open Walnut Creek Page</button>
+                <button class="btn btn-muted" id="btnNone-3">✕ Stay Here</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ── 360° panorama view (shared) ── -->
     <div id="panoramaContainer">
         <a-scene id="panoramaScene"
             embedded
@@ -183,7 +214,15 @@
         <button id="exitPanorama">← Back to AR</button>
     </div>
 
+
     <!-- ── Main AR scene ── -->
+    <!--
+        imageTargetSrc must contain ALL targets in order:
+          targetIndex 0 — main poster
+          targetIndex 1 — Bull Creek sub-target   (top-right)
+          targetIndex 2 — Appalachia Bay sub-target (middle-left)
+          targetIndex 3 — Walnut Creek sub-target  (top-left)
+    -->
     <a-scene id="arScene"
         mindar-image="imageTargetSrc: target_with_sub.mind; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;"
         vr-mode-ui="enabled: false;"
@@ -196,8 +235,10 @@
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
+        <!-- Main poster overlay — three marker dots -->
         <a-entity mindar-image-target="targetIndex: 0">
-            <!-- Top-right marker -->
+
+            <!-- Top-right marker (Bull Creek) -->
             <a-image
                 src="#markerImage"
                 position="0.3 0.2 0.03"
@@ -205,7 +246,8 @@
                 material="shader: flat;"
                 animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
             </a-image>
-            <!-- Middle-left marker -->
+
+            <!-- Middle-left marker (Appalachia Bay) -->
             <a-image
                 src="#markerImage"
                 position="-0.3 0.0 0.03"
@@ -213,94 +255,136 @@
                 material="shader: flat;"
                 animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
             </a-image>
+
+            <!-- Top-left marker (Walnut Creek) -->
+            <a-image
+                src="#markerImage"
+                position="-0.3 0.2 0.03"
+                width="0.15" height="0.15"
+                material="shader: flat;"
+                animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
+            </a-image>
+
         </a-entity>
 
-        <a-entity id="subTarget" mindar-image-target="targetIndex: 1"></a-entity>
+        <!-- Sub-target 1: Bull Creek (top-right) -->
+        <a-entity id="subTarget1" mindar-image-target="targetIndex: 1"></a-entity>
+
+        <!-- Sub-target 2: Appalachia Bay (middle-left) -->
+        <a-entity id="subTarget2" mindar-image-target="targetIndex: 2"></a-entity>
+
+        <!-- Sub-target 3: Walnut Creek (top-left) -->
+        <a-entity id="subTarget3" mindar-image-target="targetIndex: 3"></a-entity>
 
     </a-scene>
 
-    <script>
-        const websiteURL = "https://www.recreation.gov/activitypass/AP22376";
 
-        let hasTriggered = false;
+    <script>
+        /* ════════════════════════════════════════
+           URL CONFIG — swap these out when ready
+        ════════════════════════════════════════ */
+        const URLS = {
+            bullCreek:     "https://www.recreation.gov/activitypass/AP22376",
+            appalachiaBay: "YOUR_URL_HERE",
+            walnutCreek:   "YOUR_URL_HERE"
+        };
+
+        /* ════════════════════════════════════════
+           360° panorama paths (one per location,
+           or point them all at the same file)
+        ════════════════════════════════════════ */
+        const PANORAMAS = {
+            bullCreek:     "assets/panorama.jpg",
+            appalachiaBay: "assets/panorama_appalachia.jpg",
+            walnutCreek:   "assets/panorama_walnut.jpg"
+        };
 
         /* ── Element refs ── */
-        const overlay         = document.querySelector('#overlay');
-        const startButton     = document.querySelector('#startButton');
-        const confirmOverlay  = document.querySelector('#confirmOverlay');
-        const btn360          = document.querySelector('#btn360');
-        const btnWebsite      = document.querySelector('#btnWebsite');
-        const btnNone         = document.querySelector('#btnNone');
-        const subTarget       = document.querySelector('#subTarget');
+        const overlay           = document.querySelector('#overlay');
+        const startButton       = document.querySelector('#startButton');
         const panoramaContainer = document.querySelector('#panoramaContainer');
-        const exitPanorama    = document.querySelector('#exitPanorama');
-        const arScene         = document.querySelector('#arScene');
+        const panoramaImg       = document.querySelector('#panoramaImg');
+        const exitPanoramaBtn   = document.querySelector('#exitPanorama');
+        const arScene           = document.querySelector('#arScene');
+
+        const subTargets = [
+            { entity: document.querySelector('#subTarget1'), overlay: document.querySelector('#confirmOverlay1'), panorama: PANORAMAS.bullCreek,     website: URLS.bullCreek     },
+            { entity: document.querySelector('#subTarget2'), overlay: document.querySelector('#confirmOverlay2'), panorama: PANORAMAS.appalachiaBay, website: URLS.appalachiaBay },
+            { entity: document.querySelector('#subTarget3'), overlay: document.querySelector('#confirmOverlay3'), panorama: PANORAMAS.walnutCreek,    website: URLS.walnutCreek   }
+        ];
+
+        /* One cooldown flag per target */
+        const triggered = [false, false, false];
 
         /* ── Helpers ── */
-        function showConfirm() {
-            confirmOverlay.style.display = 'flex';
+        function hideAllModals() {
+            subTargets.forEach(t => t.overlay.style.display = 'none');
         }
 
-        function hideConfirm() {
-            confirmOverlay.style.display = 'none';
+        function showModal(index) {
+            hideAllModals();
+            subTargets[index].overlay.style.display = 'flex';
         }
 
-        function enterPanorama() {
-            hideConfirm();
-            // Pause AR camera stream to save resources while in 360 view
+        function enterPanorama(panoramaPath) {
+            hideAllModals();
+            panoramaImg.src = panoramaPath;
             arScene.style.display = 'none';
             panoramaContainer.style.display = 'block';
-            // Let the embedded scene resize to fill the container
             setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
         }
 
         function exitPanoramaView() {
             panoramaContainer.style.display = 'none';
             arScene.style.display = 'block';
-            // Give MindAR a moment to re-acquire the camera feed
             setTimeout(() => {
                 window.dispatchEvent(new Event('resize'));
-                hasTriggered = false;   // Ready to re-trigger
+                triggered.fill(false);   // reset all so any can re-trigger
             }, 200);
         }
 
-        /* ── 1. Start button ── */
+        /* ── Start button ── */
         startButton.addEventListener('click', () => {
             overlay.style.display = 'none';
             setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
         });
 
-        /* ── 2. Sub-target events ── */
-        subTarget.addEventListener('targetFound', () => {
-            if (hasTriggered) return;
-            hasTriggered = true;
-            showConfirm();
+        /* ── Wire up each sub-target ── */
+        subTargets.forEach((target, i) => {
+
+            /* targetFound → show this location's modal */
+            target.entity.addEventListener('targetFound', () => {
+                if (triggered[i]) return;
+                triggered[i] = true;
+                showModal(i);
+            });
+
+            /* targetLost → reset this target's cooldown */
+            target.entity.addEventListener('targetLost', () => {
+                triggered[i] = false;
+            });
+
+            /* 360° button */
+            document.querySelector(`#btn360-${i + 1}`).addEventListener('click', () => {
+                enterPanorama(target.panorama);
+            });
+
+            /* Website button */
+            document.querySelector(`#btnWebsite-${i + 1}`).addEventListener('click', () => {
+                target.overlay.style.display = 'none';
+                window.open(target.website, '_blank');
+                setTimeout(() => { triggered[i] = false; }, 3000);
+            });
+
+            /* Stay Here button */
+            document.querySelector(`#btnNone-${i + 1}`).addEventListener('click', () => {
+                target.overlay.style.display = 'none';
+                setTimeout(() => { triggered[i] = false; }, 4000);
+            });
         });
 
-        subTarget.addEventListener('targetLost', () => {
-            hasTriggered = false;
-        });
-
-        /* ── 3. Modal buttons ── */
-        btn360.addEventListener('click', () => {
-            enterPanorama();
-        });
-
-        btnWebsite.addEventListener('click', () => {
-            hideConfirm();
-            window.open(websiteURL, '_blank');
-            // Allow re-trigger after a short cooldown
-            setTimeout(() => { hasTriggered = false; }, 3000);
-        });
-
-        btnNone.addEventListener('click', () => {
-            hideConfirm();
-            // Short cooldown so the modal doesn't instantly re-appear
-            setTimeout(() => { hasTriggered = false; }, 4000);
-        });
-
-        /* ── 4. Exit panorama ── */
-        exitPanorama.addEventListener('click', () => {
+        /* ── Exit panorama ── */
+        exitPanoramaBtn.addEventListener('click', () => {
             exitPanoramaView();
         });
     </script>
