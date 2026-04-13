@@ -91,6 +91,7 @@
 
         .btn-gold   { background: #FFD700; color: #222; }
         .btn-blue   { background: #3a8fd4; color: white; }
+        .btn-green  { background: #3aad6e; color: white; }
         .btn-muted  { background: #555;    color: #ccc; }
 
         /* ── 360 panorama container ── */
@@ -122,6 +123,43 @@
             background: rgba(0,0,0,0.65);
             color: #FFD700;
             border: 2px solid #FFD700;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ── Video overlay (Appalachia Bay only) ── */
+        #videoContainer {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 8000;
+            background: #000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #locationVideo {
+            width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            background: #000;
+        }
+
+        #exitVideo {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 8500;
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid #FFD700;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.65);
+            color: #FFD700;
             backdrop-filter: blur(4px);
         }
 
@@ -167,6 +205,7 @@
 
     <!-- ══════════════════════════════════════════
          MODAL 2 — Appalachia Bay (middle-left)
+         Includes the extra Video button
     ══════════════════════════════════════════ -->
     <div id="confirmOverlay2" class="confirmOverlay">
         <div class="modal-box">
@@ -174,6 +213,7 @@
             <p>What would you like to do?</p>
             <div class="btn-row">
                 <button class="btn btn-gold"  id="btn360-2">🔭 View 360° Campground</button>
+                <button class="btn btn-green" id="btnVideo-2">▶ Watch Location Video</button>
                 <button class="btn btn-blue"  id="btnWebsite-2">🌐 Open Appalachia Bay Page</button>
                 <button class="btn btn-muted" id="btnNone-2">✕ Stay Here</button>
             </div>
@@ -212,6 +252,17 @@
             </a-camera>
         </a-scene>
         <button id="exitPanorama">← Back to AR</button>
+    </div>
+
+    <!-- ── Video overlay (Appalachia Bay only) ── -->
+    <div id="videoContainer">
+        <button id="exitVideo">← Back to AR</button>
+        <video id="locationVideo"
+            src="assets/appalachia_bay.mp4"
+            controls
+            playsinline
+            preload="none">
+        </video>
     </div>
 
 
@@ -290,8 +341,7 @@
         };
 
         /* ════════════════════════════════════════
-           360° panorama paths (one per location,
-           or point them all at the same file)
+           360° panorama paths
         ════════════════════════════════════════ */
         const PANORAMAS = {
             bullCreek:     "assets/panorama.jpg",
@@ -305,6 +355,9 @@
         const panoramaContainer = document.querySelector('#panoramaContainer');
         const panoramaImg       = document.querySelector('#panoramaImg');
         const exitPanoramaBtn   = document.querySelector('#exitPanorama');
+        const videoContainer    = document.querySelector('#videoContainer');
+        const locationVideo     = document.querySelector('#locationVideo');
+        const exitVideoBtn      = document.querySelector('#exitVideo');
         const arScene           = document.querySelector('#arScene');
 
         const subTargets = [
@@ -313,7 +366,6 @@
             { entity: document.querySelector('#subTarget3'), overlay: document.querySelector('#confirmOverlay3'), panorama: PANORAMAS.walnutCreek,    website: URLS.walnutCreek   }
         ];
 
-        /* One cooldown flag per target */
         const triggered = [false, false, false];
 
         /* ── Helpers ── */
@@ -339,7 +391,25 @@
             arScene.style.display = 'block';
             setTimeout(() => {
                 window.dispatchEvent(new Event('resize'));
-                triggered.fill(false);   // reset all so any can re-trigger
+                triggered.fill(false);
+            }, 200);
+        }
+
+        function enterVideo() {
+            hideAllModals();
+            arScene.style.display = 'none';
+            videoContainer.style.display = 'flex';
+            locationVideo.play();
+        }
+
+        function exitVideoView() {
+            locationVideo.pause();
+            locationVideo.currentTime = 0;   // rewind for next viewing
+            videoContainer.style.display = 'none';
+            arScene.style.display = 'block';
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+                triggered.fill(false);
             }, 200);
         }
 
@@ -352,41 +422,40 @@
         /* ── Wire up each sub-target ── */
         subTargets.forEach((target, i) => {
 
-            /* targetFound → show this location's modal */
             target.entity.addEventListener('targetFound', () => {
                 if (triggered[i]) return;
                 triggered[i] = true;
                 showModal(i);
             });
 
-            /* targetLost → reset this target's cooldown */
             target.entity.addEventListener('targetLost', () => {
                 triggered[i] = false;
             });
 
-            /* 360° button */
             document.querySelector(`#btn360-${i + 1}`).addEventListener('click', () => {
                 enterPanorama(target.panorama);
             });
 
-            /* Website button */
             document.querySelector(`#btnWebsite-${i + 1}`).addEventListener('click', () => {
                 target.overlay.style.display = 'none';
                 window.open(target.website, '_blank');
                 setTimeout(() => { triggered[i] = false; }, 3000);
             });
 
-            /* Stay Here button */
             document.querySelector(`#btnNone-${i + 1}`).addEventListener('click', () => {
                 target.overlay.style.display = 'none';
                 setTimeout(() => { triggered[i] = false; }, 4000);
             });
         });
 
-        /* ── Exit panorama ── */
-        exitPanoramaBtn.addEventListener('click', () => {
-            exitPanoramaView();
+        /* ── Video button (Appalachia Bay only — modal 2) ── */
+        document.querySelector('#btnVideo-2').addEventListener('click', () => {
+            enterVideo();
         });
+
+        /* ── Exit buttons ── */
+        exitPanoramaBtn.addEventListener('click', () => exitPanoramaView());
+        exitVideoBtn.addEventListener('click',    () => exitVideoView());
     </script>
 
 </body>
