@@ -126,7 +126,7 @@
             backdrop-filter: blur(4px);
         }
 
-        /* ── Video overlay (Appalachia Bay only) ── */
+        /* ── Video overlay (shared) ── */
         #videoContainer {
             display: none;
             position: fixed;
@@ -189,23 +189,23 @@
 
 
     <!-- ══════════════════════════════════════════
-         MODAL 1 — Bull Creek Boat Ramp (top-right)
+         MODAL 1 — Brush Creek (bottom-right)
     ══════════════════════════════════════════ -->
     <div id="confirmOverlay1" class="confirmOverlay">
         <div class="modal-box">
-            <h2>Keystone Lake: Bull Creek Boat Ramp</h2>
+            <h2>Brush Creek</h2>
             <p>What would you like to do?</p>
             <div class="btn-row">
                 <button class="btn btn-gold"  id="btn360-1">🔭 View 360° Campground</button>
-                <button class="btn btn-blue"  id="btnWebsite-1">🌐 Open Boat Ramp Page</button>
+                <button class="btn btn-green" id="btnVideo-1">▶ Watch Location Video</button>
+                <button class="btn btn-blue"  id="btnWebsite-1">🌐 Open Web Page</button>
                 <button class="btn btn-muted" id="btnNone-1">✕ Stay Here</button>
             </div>
         </div>
     </div>
 
     <!-- ══════════════════════════════════════════
-         MODAL 2 — Appalachia Bay (middle-left)
-         Includes the extra Video button
+         MODAL 2 — Appalachia Bay (just off center left)
     ══════════════════════════════════════════ -->
     <div id="confirmOverlay2" class="confirmOverlay">
         <div class="modal-box">
@@ -214,14 +214,15 @@
             <div class="btn-row">
                 <button class="btn btn-gold"  id="btn360-2">🔭 View 360° Campground</button>
                 <button class="btn btn-green" id="btnVideo-2">▶ Watch Location Video</button>
-                <button class="btn btn-blue"  id="btnWebsite-2">🌐 Open Appalachia Bay Page</button>
+                <button class="btn btn-blue"  id="btnWebsite-2">🌐 Open Web Page</button>
                 <button class="btn btn-muted" id="btnNone-2">✕ Stay Here</button>
             </div>
         </div>
     </div>
 
     <!-- ══════════════════════════════════════════
-         MODAL 3 — Walnut Creek (top-left)
+         MODAL 3 — Walnut Creek (top-middle)
+         No video for this location
     ══════════════════════════════════════════ -->
     <div id="confirmOverlay3" class="confirmOverlay">
         <div class="modal-box">
@@ -229,8 +230,24 @@
             <p>What would you like to do?</p>
             <div class="btn-row">
                 <button class="btn btn-gold"  id="btn360-3">🔭 View 360° Campground</button>
-                <button class="btn btn-blue"  id="btnWebsite-3">🌐 Open Walnut Creek Page</button>
+                <button class="btn btn-blue"  id="btnWebsite-3">🌐 Open Web Page</button>
                 <button class="btn btn-muted" id="btnNone-3">✕ Stay Here</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         MODAL 4 — Washington Irving (off center right)
+    ══════════════════════════════════════════ -->
+    <div id="confirmOverlay4" class="confirmOverlay">
+        <div class="modal-box">
+            <h2>Washington Irving</h2>
+            <p>What would you like to do?</p>
+            <div class="btn-row">
+                <button class="btn btn-gold"  id="btn360-4">🔭 View 360° Campground</button>
+                <button class="btn btn-green" id="btnVideo-4">▶ Watch Location Video</button>
+                <button class="btn btn-blue"  id="btnWebsite-4">🌐 Open Web Page</button>
+                <button class="btn btn-muted" id="btnNone-4">✕ Stay Here</button>
             </div>
         </div>
     </div>
@@ -254,11 +271,10 @@
         <button id="exitPanorama">← Back to AR</button>
     </div>
 
-    <!-- ── Video overlay (Appalachia Bay only) ── -->
+    <!-- ── Video overlay (shared — src is set dynamically per location) ── -->
     <div id="videoContainer">
         <button id="exitVideo">← Back to AR</button>
         <video id="locationVideo"
-            src="assets/Appalacia Bay Park.mp4"
             controls
             playsinline
             preload="none">
@@ -270,9 +286,10 @@
     <!--
         imageTargetSrc must contain ALL targets in order:
           targetIndex 0 — main poster
-          targetIndex 1 — Bull Creek sub-target   (top-right)
-          targetIndex 2 — Appalachia Bay sub-target (middle-left)
-          targetIndex 3 — Walnut Creek sub-target  (top-left)
+          targetIndex 1 — Brush Creek sub-target        (bottom-right)
+          targetIndex 2 — Appalachia Bay sub-target     (just off center left)
+          targetIndex 3 — Walnut Creek sub-target       (top-middle)
+          targetIndex 4 — Washington Irving sub-target  (off center right)
     -->
     <a-scene id="arScene"
         mindar-image="imageTargetSrc: map_targets.mind; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;"
@@ -286,31 +303,40 @@
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <!-- Main poster overlay — three marker dots -->
+        <!-- Main poster overlay — four marker dots -->
         <a-entity mindar-image-target="targetIndex: 0">
 
-            <!-- Top-right marker (Bull Creek) -->
+            <!-- Bottom-right marker (Brush Creek) -->
             <a-image
                 src="#markerImage"
-                position="0.3 0.2 0.03"
+                position="0.3 -0.2 0.03"
                 width="0.15" height="0.15"
                 material="shader: flat;"
                 animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
             </a-image>
 
-            <!-- Middle-left marker (Appalachia Bay) -->
+            <!-- Just off center left marker (Appalachia Bay) -->
             <a-image
                 src="#markerImage"
-                position="-0.3 0.0 0.03"
+                position="-0.15 0.05 0.03"
                 width="0.15" height="0.15"
                 material="shader: flat;"
                 animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
             </a-image>
 
-            <!-- Top-left marker (Walnut Creek) -->
+            <!-- Top-middle marker (Walnut Creek) -->
             <a-image
                 src="#markerImage"
-                position="-0.3 0.2 0.03"
+                position="0.0 0.3 0.03"
+                width="0.15" height="0.15"
+                material="shader: flat;"
+                animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
+            </a-image>
+
+            <!-- Off center right marker (Washington Irving) -->
+            <a-image
+                src="#markerImage"
+                position="0.2 0.05 0.03"
                 width="0.15" height="0.15"
                 material="shader: flat;"
                 animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
@@ -318,14 +344,17 @@
 
         </a-entity>
 
-        <!-- Sub-target 1: Bull Creek (top-right) -->
+        <!-- Sub-target 1: Brush Creek (bottom-right) -->
         <a-entity id="subTarget1" mindar-image-target="targetIndex: 1"></a-entity>
 
-        <!-- Sub-target 2: Appalachia Bay (middle-left) -->
+        <!-- Sub-target 2: Appalachia Bay (just off center left) -->
         <a-entity id="subTarget2" mindar-image-target="targetIndex: 2"></a-entity>
 
-        <!-- Sub-target 3: Walnut Creek (top-left) -->
+        <!-- Sub-target 3: Walnut Creek (top-middle) -->
         <a-entity id="subTarget3" mindar-image-target="targetIndex: 3"></a-entity>
+
+        <!-- Sub-target 4: Washington Irving (off center right) -->
+        <a-entity id="subTarget4" mindar-image-target="targetIndex: 4"></a-entity>
 
     </a-scene>
 
@@ -335,18 +364,30 @@
            URL CONFIG — swap these out when ready
         ════════════════════════════════════════ */
         const URLS = {
-            bullCreek:     "https://www.recreation.gov/activitypass/AP22376",
-            appalachiaBay: "YOUR_URL_HERE",
-            walnutCreek:   "YOUR_URL_HERE"
+            brushCreek:        "https://www.recreation.gov/camping/campgrounds/10040524",
+            appalachiaBay:     "https://www.recreation.gov/camping/campgrounds/10309470",
+            walnutCreek:       "https://www.recreation.gov/camping/campgrounds/10041510?tab=campsites",
+            washingtonIrving:  "https://www.recreation.gov/camping/campgrounds/233667"
         };
 
         /* ════════════════════════════════════════
            360° panorama paths
         ════════════════════════════════════════ */
         const PANORAMAS = {
-            bullCreek:     "assets/panorama.jpg",
-            appalachiaBay: "assets/panorama_appalachia.jpg",
-            walnutCreek:   "assets/panorama_walnut.jpg"
+            brushCreek:        "assets/panorama_brush_creek.jpg",
+            appalachiaBay:     "assets/panorama_appalachia.jpg",
+            walnutCreek:       "assets/panorama_walnut.jpg",
+            washingtonIrving:  "assets/panorama_washington_irving.jpg"
+        };
+
+        /* ════════════════════════════════════════
+           Video paths (null = no video for that location)
+        ════════════════════════════════════════ */
+        const VIDEOS = {
+            brushCreek:        "assets/Brush Creek Park.mp4",
+            appalachiaBay:     "assets/Appalacia Bay Park.mp4",
+            walnutCreek:       null,
+            washingtonIrving:  "assets/Washington Irving Park.mp4"
         };
 
         /* ── Element refs ── */
@@ -361,12 +402,37 @@
         const arScene           = document.querySelector('#arScene');
 
         const subTargets = [
-            { entity: document.querySelector('#subTarget1'), overlay: document.querySelector('#confirmOverlay1'), panorama: PANORAMAS.bullCreek,     website: URLS.bullCreek     },
-            { entity: document.querySelector('#subTarget2'), overlay: document.querySelector('#confirmOverlay2'), panorama: PANORAMAS.appalachiaBay, website: URLS.appalachiaBay },
-            { entity: document.querySelector('#subTarget3'), overlay: document.querySelector('#confirmOverlay3'), panorama: PANORAMAS.walnutCreek,    website: URLS.walnutCreek   }
+            {
+                entity:   document.querySelector('#subTarget1'),
+                overlay:  document.querySelector('#confirmOverlay1'),
+                panorama: PANORAMAS.brushCreek,
+                website:  URLS.brushCreek,
+                video:    VIDEOS.brushCreek
+            },
+            {
+                entity:   document.querySelector('#subTarget2'),
+                overlay:  document.querySelector('#confirmOverlay2'),
+                panorama: PANORAMAS.appalachiaBay,
+                website:  URLS.appalachiaBay,
+                video:    VIDEOS.appalachiaBay
+            },
+            {
+                entity:   document.querySelector('#subTarget3'),
+                overlay:  document.querySelector('#confirmOverlay3'),
+                panorama: PANORAMAS.walnutCreek,
+                website:  URLS.walnutCreek,
+                video:    VIDEOS.walnutCreek   // null — no video button in this modal
+            },
+            {
+                entity:   document.querySelector('#subTarget4'),
+                overlay:  document.querySelector('#confirmOverlay4'),
+                panorama: PANORAMAS.washingtonIrving,
+                website:  URLS.washingtonIrving,
+                video:    VIDEOS.washingtonIrving
+            }
         ];
 
-        const triggered = [false, false, false];
+        const triggered = [false, false, false, false];
 
         /* ── Helpers ── */
         function hideAllModals() {
@@ -395,8 +461,9 @@
             }, 200);
         }
 
-        function enterVideo() {
+        function enterVideo(videoPath) {
             hideAllModals();
+            locationVideo.src = videoPath;
             arScene.style.display = 'none';
             videoContainer.style.display = 'flex';
             locationVideo.play();
@@ -404,7 +471,8 @@
 
         function exitVideoView() {
             locationVideo.pause();
-            locationVideo.currentTime = 0;   // rewind for next viewing
+            locationVideo.removeAttribute('src');  // release the file
+            locationVideo.load();
             videoContainer.style.display = 'none';
             arScene.style.display = 'block';
             setTimeout(() => {
@@ -421,6 +489,7 @@
 
         /* ── Wire up each sub-target ── */
         subTargets.forEach((target, i) => {
+            const n = i + 1; // button ID suffix (1-based)
 
             target.entity.addEventListener('targetFound', () => {
                 if (triggered[i]) return;
@@ -432,25 +501,26 @@
                 triggered[i] = false;
             });
 
-            document.querySelector(`#btn360-${i + 1}`).addEventListener('click', () => {
+            document.querySelector(`#btn360-${n}`).addEventListener('click', () => {
                 enterPanorama(target.panorama);
             });
 
-            document.querySelector(`#btnWebsite-${i + 1}`).addEventListener('click', () => {
+            document.querySelector(`#btnWebsite-${n}`).addEventListener('click', () => {
                 target.overlay.style.display = 'none';
                 window.open(target.website, '_blank');
                 setTimeout(() => { triggered[i] = false; }, 3000);
             });
 
-            document.querySelector(`#btnNone-${i + 1}`).addEventListener('click', () => {
+            document.querySelector(`#btnNone-${n}`).addEventListener('click', () => {
                 target.overlay.style.display = 'none';
                 setTimeout(() => { triggered[i] = false; }, 4000);
             });
-        });
 
-        /* ── Video button (Appalachia Bay only — modal 2) ── */
-        document.querySelector('#btnVideo-2').addEventListener('click', () => {
-            enterVideo();
+            // Wire video button only for locations that have a video
+            const videoBtn = document.querySelector(`#btnVideo-${n}`);
+            if (videoBtn && target.video) {
+                videoBtn.addEventListener('click', () => enterVideo(target.video));
+            }
         });
 
         /* ── Exit buttons ── */
