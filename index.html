@@ -31,7 +31,7 @@
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.92);
             z-index: 19999;
             display: flex;
             justify-content: center;
@@ -55,6 +55,28 @@
             background: #FFD700;
             color: #333;
             font-weight: bold;
+        }
+        #startButton:disabled {
+            background: #888;
+            color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Loading spinner shown while MindAR warms up */
+        #loadingMsg {
+            display: none;
+            margin-top: 16px;
+            color: #FFD700;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+        #errorMsg {
+            display: none;
+            margin-top: 14px;
+            color: #ff6b6b;
+            font-size: 0.9rem;
+            text-align: center;
+            max-width: 80%;
         }
 
         /* ── Shared modal card ── */
@@ -218,6 +240,8 @@
         Point your camera at the Keystone Lake map.<br>
         Approach a glowing marker to explore that area.
     </div>
+    <div id="loadingMsg">⏳ Starting camera, please wait…</div>
+    <div id="errorMsg"></div>
 </div>
 
 
@@ -291,6 +315,12 @@
 
 <!-- ════════════════════════════════════════
      MAIN AR SCENE
+
+     KEY FIX: autoStart: false — prevents MindAR from requesting
+     the camera immediately on page load (which browsers block
+     without a user gesture, causing the white-screen freeze).
+     The camera is started explicitly when the user taps the button.
+
      .mind file must contain targets in this order:
        Index 0 — main map poster
        Index 1 — Feyodi Creek        (top-left)
@@ -302,6 +332,7 @@
 ════════════════════════════════════════ -->
 <a-scene id="arScene"
     mindar-image="imageTargetSrc: map_targets.mind;
+                  autoStart: false;
                   filterMinCF: 0.0001; filterBeta: 0.001;
                   warmupTolerance: 5; missTolerance: 5;"
     vr-mode-ui="enabled: false;"
@@ -312,7 +343,9 @@
         <img id="markerImage" src="assets/marker.png" crossorigin="anonymous">
     </a-assets>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <!-- NOTE: No explicit <a-camera> here.
+         MindAR injects its own camera for the AR feed.
+         Adding a second camera caused conflicts on some devices. -->
 
     <!-- Main poster — marker dots positioned to match each sub-target location.
          Adjust the `position` values here to align with your printed map. -->
@@ -377,12 +410,6 @@
                • One path   → single 360° photo, no nav arrows.
                • Two+ paths → multiple photos; prev/next arrows
                               appear automatically in the viewer.
-               TO ADD A NEW PHOTO: just push another filename
-               into the array, e.g.:
-               panoramas: [
-                   "assets/panorama_feyodi_1.jpg",
-                   "assets/panorama_feyodi_2.jpg"   ← new photo
-               ]
 
    video     : path to an .mp4, or null if none.
    website   : URL string, or null if none.
@@ -467,23 +494,6 @@ const LOCATIONS = {
 
 /* ════════════════════════════════════════════════════════════════
    SUB-TARGET CONFIG
-   ─────────────────────────────────────────────────────────────
-   Each entry maps one physical sub-target image (by its index
-   in the .mind file) to either a single location or a nested
-   picker that lists multiple locations.
-
-   type "single"
-     → targetFound shows the action menu for `location` directly.
-
-   type "nested"
-     → targetFound shows a picker listing all keys in `locations`.
-        Pressing one shows that location's action menu.
-        The back button on the action menu returns to the picker.
-
-   markerPos
-     → A-Frame position string for the pulsing dot on the main
-        poster. Tune x/y to align with your printed map.
-        Format: "x y z" (z should stay 0.03)
 ════════════════════════════════════════════════════════════════ */
 const SUB_TARGETS = [
 
@@ -528,6 +538,8 @@ const SUB_TARGETS = [
 ════════════════════════════════════════════════════════════════ */
 const overlay           = document.querySelector('#overlay');
 const startButton       = document.querySelector('#startButton');
+const loadingMsg        = document.querySelector('#loadingMsg');
+const errorMsg          = document.querySelector('#errorMsg');
 const arScene           = document.querySelector('#arScene');
 
 // Picker overlay
@@ -560,17 +572,13 @@ const exitVideoBtn      = document.querySelector('#exitVideo');
 /* ════════════════════════════════════════════════════════════════
    STATE
 ════════════════════════════════════════════════════════════════ */
-// One cooldown flag per sub-target (indices 0-5 matching SUB_TARGETS)
 const triggered = new Array(SUB_TARGETS.length).fill(false);
 
-// Panorama state
 let currentPanoList  = [];
 let currentPanoIndex = 0;
 let currentPanoName  = "";
 
-// Track whether action menu was reached via a picker (for back button)
 let actionCameFromPicker = false;
-// Track the nested config that opened the picker, so we can re-show it
 let activePicker = null;
 
 
@@ -609,7 +617,6 @@ function showAction(locKey, fromPicker = false) {
     actionTitle.textContent = loc.name;
     actionBtns.innerHTML = "";
 
-    // 360° button — always present when panoramas exist
     if (loc.panoramas && loc.panoramas.length > 0) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-gold';
@@ -618,7 +625,6 @@ function showAction(locKey, fromPicker = false) {
         actionBtns.appendChild(btn);
     }
 
-    // Video button
     if (loc.video) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-green';
@@ -627,7 +633,6 @@ function showAction(locKey, fromPicker = false) {
         actionBtns.appendChild(btn);
     }
 
-    // Website button
     if (loc.website) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-blue';
@@ -635,15 +640,12 @@ function showAction(locKey, fromPicker = false) {
         btn.addEventListener('click', () => {
             hideAllMenus();
             window.open(loc.website, '_blank');
-            // Reset all triggers after a short cooldown so menus can re-fire
             setTimeout(() => triggered.fill(false), 3000);
         });
         actionBtns.appendChild(btn);
     }
 
-    // Back button label depends on origin
     actionBack.textContent = fromPicker ? "← Choose Different Location" : "✕ Stay Here";
-
     actionOverlay.style.display = 'flex';
 }
 
@@ -671,7 +673,6 @@ function loadPanorama(index) {
     currentPanoIndex = index;
     const total = currentPanoList.length;
 
-    // Wait for image to load before applying to sky
     panoramaImg.onload = () => {
         const sky = document.querySelector('a-sky');
         sky.setAttribute('src', '#panoramaImg');
@@ -680,7 +681,6 @@ function loadPanorama(index) {
     panoramaImg.src = currentPanoList[index];
     panoLabel.textContent = currentPanoName;
 
-    // Show counter only when there are multiple photos
     if (total > 1) {
         panoCounter.textContent = `(${index + 1} / ${total})`;
         panoCounter.style.display = 'inline';
@@ -749,17 +749,14 @@ exitVideoBtn.addEventListener('click', () => exitVideoView());
 ════════════════════════════════════════════════════════════════ */
 pickerBack.addEventListener('click', () => {
     hideAllMenus();
-    // Short cooldown before allowing re-trigger
     setTimeout(() => triggered.fill(false), 4000);
 });
 
 actionBack.addEventListener('click', () => {
     actionOverlay.style.display = 'none';
     if (actionCameFromPicker && activePicker) {
-        // Return to the location picker rather than dismissing entirely
         showPicker(activePicker);
     } else {
-        // Was a direct single-location menu — just dismiss
         setTimeout(() => triggered.fill(false), 4000);
     }
 });
@@ -767,11 +764,59 @@ actionBack.addEventListener('click', () => {
 
 /* ════════════════════════════════════════════════════════════════
    START BUTTON
+   ─────────────────────────────────────────────────────────────
+   FIX SUMMARY:
+   1. Wait for A-Frame scene to fully load before calling .start()
+      (avoids "cannot read property of undefined" on the system).
+   2. Wrap in try/catch and surface a readable error message so
+      the user knows to grant camera permission instead of seeing
+      a blank screen.
+   3. Show a loading message while MindAR warms up.
 ════════════════════════════════════════════════════════════════ */
-startButton.addEventListener('click', () => {
-    overlay.style.display = 'none';
-    await arScene.systems["mindar-image-system"].start();
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+startButton.addEventListener('click', async () => {
+    // Disable button and show loading state
+    startButton.disabled = true;
+    startButton.textContent = 'Starting…';
+    loadingMsg.style.display = 'block';
+    errorMsg.style.display   = 'none';
+
+    try {
+        // Wait for A-Frame to finish its internal setup if it hasn't yet
+        if (!arScene.hasLoaded) {
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('Scene load timed out')), 15000);
+                arScene.addEventListener('loaded', () => {
+                    clearTimeout(timeout);
+                    resolve();
+                }, { once: true });
+            });
+        }
+
+        // Now it's safe to start MindAR (this triggers the camera permission prompt)
+        await arScene.systems["mindar-image-system"].start();
+
+        // Success — hide the entire start overlay
+        overlay.style.display = 'none';
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+
+    } catch (err) {
+        console.error("AR start failed:", err);
+
+        // Put the button back so the user can try again
+        startButton.disabled = false;
+        startButton.textContent = 'Try Again';
+        loadingMsg.style.display = 'none';
+
+        // Show a friendly error
+        let msg = '⚠️ Could not start the camera.';
+        if (err && (err.name === 'NotAllowedError' || (err.message && err.message.includes('permission')))) {
+            msg = '⚠️ Camera access was denied. Please allow camera permission in your browser settings and try again.';
+        } else if (err && err.message) {
+            msg = '⚠️ ' + err.message;
+        }
+        errorMsg.textContent = msg;
+        errorMsg.style.display = 'block';
+    }
 });
 
 
