@@ -115,8 +115,11 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             z-index: 8000;
+            background: #000;
         }
-        #panoramaScene { width: 100%; height: 100%; }
+
+        /*  The a-scene injected here at runtime fills its parent.
+            Width/height applied via inline style when created.    */
 
         /* Floating bar over panorama */
         #panoBar {
@@ -248,33 +251,14 @@
 
 
 <!-- ════════════════════════════════════════
-     360° PANORAMA VIEW
-
-     IMPORTANT: <a-sky> intentionally has NO src attribute here.
-     The src is set at runtime via panoramaSky.setAttribute('src', ...)
-     inside loadPanorama(). This is required because A-Frame's asset
-     system caches texture bindings at scene init time — if we used
-     a bound <img> and swapped its src in JS, A-Frame would never
-     see the change and the sky would stay black.
+     360° PANORAMA CONTAINER
+     The <a-scene> is NOT here in the HTML.
+     It is created dynamically in enterPanorama()
+     and destroyed in exitPanoramaView() so it
+     never conflicts with the main AR scene.
 ════════════════════════════════════════ -->
 <div id="panoramaContainer">
-    <a-scene id="panoramaScene"
-        embedded
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false"
-        renderer="colorManagement: false;">
-        <a-assets>
-            <!-- Placeholder keeps A-Frame's asset system happy;
-                 actual panorama src is set via setAttribute below -->
-            <img id="panoramaImg" crossorigin="anonymous">
-        </a-assets>
-        <a-sky id="panoramaSky" rotation="0 -90 0"></a-sky>
-        <a-camera look-controls="enabled: true; touchEnabled: true;"
-                  wasd-controls="enabled: false"
-                  position="0 0 0">
-        </a-camera>
-    </a-scene>
-
+    <!-- a-scene injected here at runtime -->
     <div id="panoBar">
         <button class="pano-nav-btn" id="prevPano">&#8592;</button>
         <span id="panoLabel">Location</span>
@@ -375,12 +359,10 @@
 <script>
 /* ════════════════════════════════════════════════════════════════
    LOCATION CONFIG
-   ─────────────────────────────────────────────────────────────
    panoramas : array of image paths.
-               One entry  → single photo, no nav arrows shown.
+               One entry  → single photo, no nav arrows.
                Two+ entries → prev/next arrows appear automatically.
                TO ADD A PHOTO: push another filename into the array.
-
    video   : mp4 path, or null.
    website : URL string, or null.
 ════════════════════════════════════════════════════════════════ */
@@ -522,7 +504,7 @@ const actionBtns        = document.querySelector('#actionBtns');
 const actionBack        = document.querySelector('#actionBack');
 
 const panoramaContainer = document.querySelector('#panoramaContainer');
-const panoramaSky       = document.querySelector('#panoramaSky');
+const panoBar           = document.querySelector('#panoBar');
 const panoLabel         = document.querySelector('#panoLabel');
 const panoCounter       = document.querySelector('#panoCounter');
 const prevPanoBtn       = document.querySelector('#prevPano');
@@ -615,47 +597,95 @@ function showAction(locKey, fromPicker = false) {
 
 /* ════════════════════════════════════════════════════════════════
    PANORAMA
+   The <a-scene> for the panorama is created fresh each time
+   enterPanorama() is called and torn down in exitPanoramaView().
+   This guarantees only one A-Frame scene is ever active at once,
+   preventing the WebGL/camera conflict that caused the white screen.
 ════════════════════════════════════════════════════════════════ */
-function enterPanorama(locKey) {
-    const loc = LOCATIONS[locKey];
-    hideAllMenus();
-    currentPanoList  = loc.panoramas;
-    currentPanoIndex = 0;
-    currentPanoName  = loc.name;
-    loadPanorama(0);
-    arScene.style.display = 'none';
-    panoramaContainer.style.display = 'block';
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+function buildPanoramaScene(src) {
+    // Safety: remove any leftover scene from a previous session
+    const old = document.getElementById('panoramaScene');
+    if (old) old.remove();
+
+    // Build the scene entirely in JS so we can set src before it renders
+    const scene = document.createElement('a-scene');
+    scene.id = 'panoramaScene';
+    scene.setAttribute('embedded', '');
+    scene.setAttribute('vr-mode-ui', 'enabled: false');
+    scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
+    scene.setAttribute('renderer', 'colorManagement: false');
+    scene.style.width  = '100%';
+    scene.style.height = '100%';
+    scene.style.display = 'block';
+
+    const sky = document.createElement('a-sky');
+    sky.id = 'panoramaSky';
+    sky.setAttribute('src', src);
+    sky.setAttribute('rotation', '0 -90 0');
+
+    const cam = document.createElement('a-camera');
+    cam.setAttribute('look-controls', 'enabled: true; touchEnabled: true;');
+    cam.setAttribute('wasd-controls', 'enabled: false');
+    cam.setAttribute('position', '0 0 0');
+
+    scene.appendChild(sky);
+    scene.appendChild(cam);
+
+    // Insert before the panoBar so the bar stays on top
+    panoramaContainer.insertBefore(scene, panoBar);
 }
 
-function loadPanorama(index) {
-    currentPanoIndex = index;
-    const total = currentPanoList.length;
-
-    // Set src directly on <a-sky> — this is the correct way to dynamically
-    // swap A-Frame textures. Updating a bound <img> src does not trigger
-    // A-Frame to re-apply the texture; setAttribute() does.
-    panoramaSky.setAttribute('src', currentPanoList[index]);
-
+function updatePanoNav(index, total) {
     panoLabel.textContent = currentPanoName;
-
     if (total > 1) {
-        panoCounter.textContent = `(${index + 1} / ${total})`;
+        panoCounter.textContent  = `(${index + 1} / ${total})`;
         panoCounter.style.display = 'inline';
         prevPanoBtn.style.display = 'inline';
-        nextPanoBtn.style.display  = 'inline';
+        nextPanoBtn.style.display = 'inline';
         prevPanoBtn.disabled = (index === 0);
         nextPanoBtn.disabled = (index === total - 1);
     } else {
         panoCounter.style.display = 'none';
         prevPanoBtn.style.display = 'none';
-        nextPanoBtn.style.display  = 'none';
+        nextPanoBtn.style.display = 'none';
     }
 }
 
+function enterPanorama(locKey) {
+    const loc = LOCATIONS[locKey];
+    hideAllMenus();
+
+    currentPanoList  = loc.panoramas;
+    currentPanoIndex = 0;
+    currentPanoName  = loc.name;
+
+    // Hide AR, show container first so the scene has a sized viewport
+    arScene.style.display = 'none';
+    panoramaContainer.style.display = 'block';
+
+    // Build and inject the panorama scene with the correct src already set
+    buildPanoramaScene(currentPanoList[0]);
+    updatePanoNav(0, currentPanoList.length);
+
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 150);
+}
+
+function loadPanorama(index) {
+    // Navigate between photos in an already-open panorama viewer
+    currentPanoIndex = index;
+    const sky = document.getElementById('panoramaSky');
+    if (sky) sky.setAttribute('src', currentPanoList[index]);
+    updatePanoNav(index, currentPanoList.length);
+}
+
 function exitPanoramaView() {
+    // Completely remove the panorama scene — frees WebGL context & camera
+    const scene = document.getElementById('panoramaScene');
+    if (scene) scene.remove();
+
     panoramaContainer.style.display = 'none';
     arScene.style.display = 'block';
+
     setTimeout(() => {
         window.dispatchEvent(new Event('resize'));
         triggered.fill(false);
