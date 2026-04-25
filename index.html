@@ -115,11 +115,8 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             z-index: 8000;
-            background: #000;
         }
-
-        /*  The a-scene injected here at runtime fills its parent.
-            Width/height applied via inline style when created.    */
+        #panoramaScene { width: 100%; height: 100%; }
 
         /* Floating bar over panorama */
         #panoBar {
@@ -226,6 +223,7 @@
 
 <!-- ════════════════════════════════════════
      LOCATION PICKER (nested targets only)
+     Populated dynamically by JS
 ════════════════════════════════════════ -->
 <div id="pickerOverlay" class="fullOverlay modal-bg" style="z-index: 10001;">
     <div class="modal-box">
@@ -238,7 +236,8 @@
 
 
 <!-- ════════════════════════════════════════
-     ACTION MENU
+     ACTION MENU (single or after picker)
+     Populated dynamically by JS
 ════════════════════════════════════════ -->
 <div id="actionOverlay" class="fullOverlay modal-bg" style="z-index: 10000;">
     <div class="modal-box">
@@ -251,14 +250,25 @@
 
 
 <!-- ════════════════════════════════════════
-     360° PANORAMA CONTAINER
-     The <a-scene> is NOT here in the HTML.
-     It is created dynamically in enterPanorama()
-     and destroyed in exitPanoramaView() so it
-     never conflicts with the main AR scene.
+     360° PANORAMA VIEW
 ════════════════════════════════════════ -->
 <div id="panoramaContainer">
-    <!-- a-scene injected here at runtime -->
+    <a-scene id="panoramaScene"
+        embedded
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false"
+        renderer="colorManagement: false;">
+        <a-assets>
+            <img id="panoramaImg" src="" crossorigin="anonymous">
+        </a-assets>
+        <a-sky src="#panoramaImg" rotation="0 -90 0"></a-sky>
+        <a-camera look-controls="enabled: true; touchEnabled: true;"
+                  wasd-controls="enabled: false"
+                  position="0 0 0">
+        </a-camera>
+    </a-scene>
+
+    <!-- Navigation bar: ← location name  1/3  → | Back to AR -->
     <div id="panoBar">
         <button class="pano-nav-btn" id="prevPano">&#8592;</button>
         <span id="panoLabel">Location</span>
@@ -281,10 +291,10 @@
 
 <!-- ════════════════════════════════════════
      MAIN AR SCENE
-     .mind file target order:
+     .mind file must contain targets in this order:
        Index 0 — main map poster
        Index 1 — Feyodi Creek        (top-left)
-       Index 2 — Cowskin Bay         (top-left, lower/right of Feyodi)
+       Index 2 — Cowskin Bay         (top-left, lower/right)
        Index 3 — Walnut Creek        (top-right)
        Index 4 — Appalachia/Wash.Irv (just right of center)
        Index 5 — New Mannford        (bottom-center)
@@ -304,8 +314,8 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Main poster — six pulsing marker dots.
-         Adjust position x/y values to align with your printed map. -->
+    <!-- Main poster — marker dots positioned to match each sub-target location.
+         Adjust the `position` values here to align with your printed map. -->
     <a-entity mindar-image-target="targetIndex: 0">
 
         <!-- Feyodi Creek — top-left -->
@@ -346,6 +356,7 @@
 
     </a-entity>
 
+    <!-- Sub-target entities — one per physical sub-target image -->
     <a-entity id="subTarget1" mindar-image-target="targetIndex: 1"></a-entity>
     <a-entity id="subTarget2" mindar-image-target="targetIndex: 2"></a-entity>
     <a-entity id="subTarget3" mindar-image-target="targetIndex: 3"></a-entity>
@@ -359,12 +370,22 @@
 <script>
 /* ════════════════════════════════════════════════════════════════
    LOCATION CONFIG
+   ─────────────────────────────────────────────────────────────
+   Each entry describes one visitable location.
+
    panoramas : array of image paths.
-               One entry  → single photo, no nav arrows.
-               Two+ entries → prev/next arrows appear automatically.
-               TO ADD A PHOTO: push another filename into the array.
-   video   : mp4 path, or null.
-   website : URL string, or null.
+               • One path   → single 360° photo, no nav arrows.
+               • Two+ paths → multiple photos; prev/next arrows
+                              appear automatically in the viewer.
+               TO ADD A NEW PHOTO: just push another filename
+               into the array, e.g.:
+               panoramas: [
+                   "assets/panorama_feyodi_1.jpg",
+                   "assets/panorama_feyodi_2.jpg"   ← new photo
+               ]
+
+   video     : path to an .mp4, or null if none.
+   website   : URL string, or null if none.
 ════════════════════════════════════════════════════════════════ */
 const LOCATIONS = {
 
@@ -385,10 +406,10 @@ const LOCATIONS = {
     walnutCreek: {
         name:      "Walnut Creek",
         panoramas: [
-            "assets/Walnut Creek Boat Ramp.JPG",
-            "assets/Walnut Creek Campground 1.JPG",
-            "assets/Walnut Creek Shelter.JPG"
-        ],
+                    "assets/Walnut Creek Boat Ramp.JPG",
+                    "assets/Walnut Creek Campground 1.JPG",
+                    "assets/Walnut Creek Shelter.JPG"
+                   ],
         video:     null,
         website:   "https://www.recreation.gov/camping/campgrounds/10041510?tab=campsites"
     },
@@ -410,20 +431,19 @@ const LOCATIONS = {
     newMannford: {
         name:      "New Mannford",
         panoramas: [
-            "assets/New_Mannford_Boat_Ramp.JPG",
-            "assets/New_Mannford_Ramp_Crosstimbers.JPG"
-        ],
+                    "assets/New_Mannford_Boat_Ramp.JPG",
+                    "assets/New_Mannford_Ramp_Crosstimbers.JPG"
+                    ],
         video:     null,
         website:   null
     },
 
     keystoneStatePark: {
         name:      "Keystone State Park",
-        panoramas: [
-            "assets/Keystone_Overlook_Dam.JPG",
-            "assets/Keystone_State_Park.JPG",
-            "assets/Keystone_State_Park_Gen_Store.JPG"
-        ],
+        panoramas: ["assets/Keystone_Overlook_Dam.JPG",
+                    "assets/Keystone_State_Park.JPG",
+                    "assets/Keystone_State_Park_Gen_Store.JPG"
+                   ],
         video:     null,
         website:   null
     },
@@ -447,40 +467,57 @@ const LOCATIONS = {
 
 /* ════════════════════════════════════════════════════════════════
    SUB-TARGET CONFIG
+   ─────────────────────────────────────────────────────────────
+   Each entry maps one physical sub-target image (by its index
+   in the .mind file) to either a single location or a nested
+   picker that lists multiple locations.
+
+   type "single"
+     → targetFound shows the action menu for `location` directly.
+
+   type "nested"
+     → targetFound shows a picker listing all keys in `locations`.
+        Pressing one shows that location's action menu.
+        The back button on the action menu returns to the picker.
+
+   markerPos
+     → A-Frame position string for the pulsing dot on the main
+        poster. Tune x/y to align with your printed map.
+        Format: "x y z" (z should stay 0.03)
 ════════════════════════════════════════════════════════════════ */
 const SUB_TARGETS = [
 
-    {   // Index 1 — Feyodi Creek (top-left)
-        type:      "single",
-        location:  "feyodiCreek",
-        markerPos: "-0.35 0.30 0.03"
+    {   // Index 1
+        type:       "single",
+        location:   "feyodiCreek",
+        markerPos:  "-0.35 0.30 0.03"
     },
-    {   // Index 2 — Cowskin Bay (top-left, lower/right)
-        type:      "single",
-        location:  "cowskinBay",
-        markerPos: "-0.18 0.18 0.03"
+    {   // Index 2
+        type:       "single",
+        location:   "cowskinBay",
+        markerPos:  "-0.18 0.18 0.03"
     },
-    {   // Index 3 — Walnut Creek (top-right)
-        type:      "single",
-        location:  "walnutCreek",
-        markerPos: "0.35 0.30 0.03"
+    {   // Index 3
+        type:       "single",
+        location:   "walnutCreek",
+        markerPos:  "0.35 0.30 0.03"
     },
-    {   // Index 4 — Appalachia Bay / Washington Irving (right of center)
-        type:        "nested",
-        pickerTitle: "Keystone Lake",
-        locations:   ["appalachiaBay", "washingtonIrving"],
-        markerPos:   "0.15 0.05 0.03"
+    {   // Index 4 — nested: two locations share one sub-target
+        type:         "nested",
+        pickerTitle:  "Keystone Lake",
+        locations:    ["appalachiaBay", "washingtonIrving"],
+        markerPos:    "0.15 0.05 0.03"
     },
-    {   // Index 5 — New Mannford (bottom-center)
-        type:      "single",
-        location:  "newMannford",
-        markerPos: "0.00 -0.25 0.03"
+    {   // Index 5
+        type:       "single",
+        location:   "newMannford",
+        markerPos:  "0.00 -0.25 0.03"
     },
-    {   // Index 6 — Keystone / White Water / Brush Creek (bottom-right)
-        type:        "nested",
-        pickerTitle: "Keystone Lake South",
-        locations:   ["keystoneStatePark", "whiteWaterBay", "brushCreek"],
-        markerPos:   "0.35 -0.25 0.03"
+    {   // Index 6 — nested: three locations share one sub-target
+        type:         "nested",
+        pickerTitle:  "Keystone Lake South",
+        locations:    ["keystoneStatePark", "whiteWaterBay", "brushCreek"],
+        markerPos:    "0.35 -0.25 0.03"
     }
 
 ];
@@ -493,24 +530,28 @@ const overlay           = document.querySelector('#overlay');
 const startButton       = document.querySelector('#startButton');
 const arScene           = document.querySelector('#arScene');
 
+// Picker overlay
 const pickerOverlay     = document.querySelector('#pickerOverlay');
 const pickerTitle       = document.querySelector('#pickerTitle');
 const pickerBtns        = document.querySelector('#pickerBtns');
 const pickerBack        = document.querySelector('#pickerBack');
 
+// Action overlay
 const actionOverlay     = document.querySelector('#actionOverlay');
 const actionTitle       = document.querySelector('#actionTitle');
 const actionBtns        = document.querySelector('#actionBtns');
 const actionBack        = document.querySelector('#actionBack');
 
+// Panorama
 const panoramaContainer = document.querySelector('#panoramaContainer');
-const panoBar           = document.querySelector('#panoBar');
+const panoramaImg       = document.querySelector('#panoramaImg');
 const panoLabel         = document.querySelector('#panoLabel');
 const panoCounter       = document.querySelector('#panoCounter');
 const prevPanoBtn       = document.querySelector('#prevPano');
 const nextPanoBtn       = document.querySelector('#nextPano');
 const exitPanoramaBtn   = document.querySelector('#exitPanorama');
 
+// Video
 const videoContainer    = document.querySelector('#videoContainer');
 const locationVideo     = document.querySelector('#locationVideo');
 const exitVideoBtn      = document.querySelector('#exitVideo');
@@ -519,17 +560,22 @@ const exitVideoBtn      = document.querySelector('#exitVideo');
 /* ════════════════════════════════════════════════════════════════
    STATE
 ════════════════════════════════════════════════════════════════ */
+// One cooldown flag per sub-target (indices 0-5 matching SUB_TARGETS)
 const triggered = new Array(SUB_TARGETS.length).fill(false);
 
+// Panorama state
 let currentPanoList  = [];
 let currentPanoIndex = 0;
 let currentPanoName  = "";
+
+// Track whether action menu was reached via a picker (for back button)
 let actionCameFromPicker = false;
+// Track the nested config that opened the picker, so we can re-show it
 let activePicker = null;
 
 
 /* ════════════════════════════════════════════════════════════════
-   MENU HELPERS
+   HIDE / SHOW HELPERS
 ════════════════════════════════════════════════════════════════ */
 function hideAllMenus() {
     pickerOverlay.style.display = 'none';
@@ -559,9 +605,11 @@ function showPicker(targetCfg) {
 function showAction(locKey, fromPicker = false) {
     const loc = LOCATIONS[locKey];
     actionCameFromPicker = fromPicker;
+
     actionTitle.textContent = loc.name;
     actionBtns.innerHTML = "";
 
+    // 360° button — always present when panoramas exist
     if (loc.panoramas && loc.panoramas.length > 0) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-gold';
@@ -570,6 +618,7 @@ function showAction(locKey, fromPicker = false) {
         actionBtns.appendChild(btn);
     }
 
+    // Video button
     if (loc.video) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-green';
@@ -578,6 +627,7 @@ function showAction(locKey, fromPicker = false) {
         actionBtns.appendChild(btn);
     }
 
+    // Website button
     if (loc.website) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-blue';
@@ -585,60 +635,47 @@ function showAction(locKey, fromPicker = false) {
         btn.addEventListener('click', () => {
             hideAllMenus();
             window.open(loc.website, '_blank');
+            // Reset all triggers after a short cooldown so menus can re-fire
             setTimeout(() => triggered.fill(false), 3000);
         });
         actionBtns.appendChild(btn);
     }
 
+    // Back button label depends on origin
     actionBack.textContent = fromPicker ? "← Choose Different Location" : "✕ Stay Here";
+
     actionOverlay.style.display = 'flex';
 }
 
 
 /* ════════════════════════════════════════════════════════════════
    PANORAMA
-   The <a-scene> for the panorama is created fresh each time
-   enterPanorama() is called and torn down in exitPanoramaView().
-   This guarantees only one A-Frame scene is ever active at once,
-   preventing the WebGL/camera conflict that caused the white screen.
 ════════════════════════════════════════════════════════════════ */
-function buildPanoramaScene(src) {
-    // Safety: remove any leftover scene from a previous session
-    const old = document.getElementById('panoramaScene');
-    if (old) old.remove();
+function enterPanorama(locKey) {
+    const loc = LOCATIONS[locKey];
+    hideAllMenus();
 
-    // Build the scene entirely in JS so we can set src before it renders
-    const scene = document.createElement('a-scene');
-    scene.id = 'panoramaScene';
-    scene.setAttribute('embedded', '');
-    scene.setAttribute('vr-mode-ui', 'enabled: false');
-    scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
-    scene.setAttribute('renderer', 'colorManagement: false');
-    scene.style.width  = '100%';
-    scene.style.height = '100%';
-    scene.style.display = 'block';
+    currentPanoList  = loc.panoramas;
+    currentPanoIndex = 0;
+    currentPanoName  = loc.name;
 
-    const sky = document.createElement('a-sky');
-    sky.id = 'panoramaSky';
-    sky.setAttribute('src', src);
-    sky.setAttribute('rotation', '0 -90 0');
+    loadPanorama(0);
 
-    const cam = document.createElement('a-camera');
-    cam.setAttribute('look-controls', 'enabled: true; touchEnabled: true;');
-    cam.setAttribute('wasd-controls', 'enabled: false');
-    cam.setAttribute('position', '0 0 0');
-
-    scene.appendChild(sky);
-    scene.appendChild(cam);
-
-    // Insert before the panoBar so the bar stays on top
-    panoramaContainer.insertBefore(scene, panoBar);
+    arScene.style.display = 'none';
+    panoramaContainer.style.display = 'block';
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 }
 
-function updatePanoNav(index, total) {
+function loadPanorama(index) {
+    currentPanoIndex = index;
+    const total = currentPanoList.length;
+
+    panoramaImg.src = currentPanoList[index];
     panoLabel.textContent = currentPanoName;
+
+    // Show counter only when there are multiple photos
     if (total > 1) {
-        panoCounter.textContent  = `(${index + 1} / ${total})`;
+        panoCounter.textContent = `(${index + 1} / ${total})`;
         panoCounter.style.display = 'inline';
         prevPanoBtn.style.display = 'inline';
         nextPanoBtn.style.display = 'inline';
@@ -651,41 +688,9 @@ function updatePanoNav(index, total) {
     }
 }
 
-function enterPanorama(locKey) {
-    const loc = LOCATIONS[locKey];
-    hideAllMenus();
-
-    currentPanoList  = loc.panoramas;
-    currentPanoIndex = 0;
-    currentPanoName  = loc.name;
-
-    // Hide AR, show container first so the scene has a sized viewport
-    arScene.style.display = 'none';
-    panoramaContainer.style.display = 'block';
-
-    // Build and inject the panorama scene with the correct src already set
-    buildPanoramaScene(currentPanoList[0]);
-    updatePanoNav(0, currentPanoList.length);
-
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 150);
-}
-
-function loadPanorama(index) {
-    // Navigate between photos in an already-open panorama viewer
-    currentPanoIndex = index;
-    const sky = document.getElementById('panoramaSky');
-    if (sky) sky.setAttribute('src', currentPanoList[index]);
-    updatePanoNav(index, currentPanoList.length);
-}
-
 function exitPanoramaView() {
-    // Completely remove the panorama scene — frees WebGL context & camera
-    const scene = document.getElementById('panoramaScene');
-    if (scene) scene.remove();
-
     panoramaContainer.style.display = 'none';
     arScene.style.display = 'block';
-
     setTimeout(() => {
         window.dispatchEvent(new Event('resize'));
         triggered.fill(false);
@@ -707,6 +712,7 @@ exitPanoramaBtn.addEventListener('click', () => exitPanoramaView());
 function enterVideo(locKey) {
     const loc = LOCATIONS[locKey];
     hideAllMenus();
+
     locationVideo.src = loc.video;
     arScene.style.display = 'none';
     videoContainer.style.display = 'flex';
@@ -733,14 +739,17 @@ exitVideoBtn.addEventListener('click', () => exitVideoView());
 ════════════════════════════════════════════════════════════════ */
 pickerBack.addEventListener('click', () => {
     hideAllMenus();
+    // Short cooldown before allowing re-trigger
     setTimeout(() => triggered.fill(false), 4000);
 });
 
 actionBack.addEventListener('click', () => {
     actionOverlay.style.display = 'none';
     if (actionCameFromPicker && activePicker) {
+        // Return to the location picker rather than dismissing entirely
         showPicker(activePicker);
     } else {
+        // Was a direct single-location menu — just dismiss
         setTimeout(() => triggered.fill(false), 4000);
     }
 });
@@ -757,6 +766,7 @@ startButton.addEventListener('click', () => {
 
 /* ════════════════════════════════════════════════════════════════
    SUB-TARGET WIRING
+   Loops over SUB_TARGETS config — no manual per-target code needed.
 ════════════════════════════════════════════════════════════════ */
 SUB_TARGETS.forEach((cfg, i) => {
     const entity = document.querySelector(`#subTarget${i + 1}`);
@@ -764,6 +774,7 @@ SUB_TARGETS.forEach((cfg, i) => {
     entity.addEventListener('targetFound', () => {
         if (triggered[i]) return;
         triggered[i] = true;
+
         if (cfg.type === 'nested') {
             showPicker(cfg);
         } else {
