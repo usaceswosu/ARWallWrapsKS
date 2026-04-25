@@ -137,8 +137,21 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             z-index: 8000;
+            background: #000;
         }
-        #panoramaScene { width: 100%; height: 100%; }
+        #panoCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #panoLoading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            color: #FFD700;
+            font-size: 1rem;
+            pointer-events: none;
+        }
 
         /* Floating bar over panorama */
         #panoBar {
@@ -275,22 +288,14 @@
 
 <!-- ════════════════════════════════════════
      360° PANORAMA VIEW
+     Pure Three.js — no second <a-scene>.
+     A-Frame doesn't support two scenes on one page; the second
+     scene never gets a proper WebGL context → white screen.
+     Three.js is already bundled inside A-Frame (window.THREE).
 ════════════════════════════════════════ -->
 <div id="panoramaContainer">
-    <a-scene id="panoramaScene"
-        embedded
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false"
-        renderer="colorManagement: false;">
-        <!-- No <a-assets> img here — A-Frame caches by asset ID and never
-             re-fetches when the src changes. We set the sky src directly
-             to the file URL each time, bypassing the asset system. -->
-        <a-sky id="panoSky" rotation="0 -90 0"></a-sky>
-        <a-camera look-controls="enabled: true; touchEnabled: true;"
-                  wasd-controls="enabled: false"
-                  position="0 0 0">
-        </a-camera>
-    </a-scene>
+    <canvas id="panoCanvas"></canvas>
+    <div id="panoLoading">⏳ Loading photo…</div>
 
     <!-- Navigation bar: ← location name  1/3  → | Back to AR -->
     <div id="panoBar">
@@ -556,6 +561,8 @@ const actionBack        = document.querySelector('#actionBack');
 
 // Panorama
 const panoramaContainer = document.querySelector('#panoramaContainer');
+const panoCanvas        = document.querySelector('#panoCanvas');
+const panoLoadingEl     = document.querySelector('#panoLoading');
 const panoLabel         = document.querySelector('#panoLabel');
 const panoCounter       = document.querySelector('#panoCounter');
 const prevPanoBtn       = document.querySelector('#prevPano');
@@ -650,8 +657,88 @@ function showAction(locKey, fromPicker = false) {
 
 
 /* ════════════════════════════════════════════════════════════════
-   PANORAMA
+   PANORAMA — Three.js direct renderer
+   ─────────────────────────────────────────────────────────────
+   Why: A-Frame doesn't support two <a-scene> elements on one page.
+   The embedded panorama scene never received a real WebGL context,
+   producing a permanent white screen no matter what src was set.
+
+   Fix: use window.THREE (bundled inside A-Frame) to create our own
+   WebGLRenderer on a plain <canvas>.  A textured sphere with its
+   normals flipped inward gives a standard equirectangular 360° view.
+   Touch and mouse drag control the camera look direction.
 ════════════════════════════════════════════════════════════════ */
+let panoRenderer  = null;   // THREE.WebGLRenderer
+let panoScene3    = null;   // THREE.Scene
+let panoCamera3   = null;   // THREE.PerspectiveCamera
+let panoSphere    = null;   // THREE.Mesh  (inside-out sphere)
+let panoAnimFrame = null;   // requestAnimationFrame id
+
+// Look-control state
+let panoPointerDown = false;
+let panoLastX = 0, panoLastY = 0;
+let panoCameraLon = 0, panoCameraLat = 0;   // degrees
+
+function initPanoRenderer() {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+
+    panoRenderer = new THREE.WebGLRenderer({ canvas: panoCanvas, antialias: true });
+    panoRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    panoRenderer.setSize(W, H);
+
+    panoScene3  = new THREE.Scene();
+    panoCamera3 = new THREE.PerspectiveCamera(75, W / H, 0.1, 1000);
+
+    // Sphere: scale x by -1 to flip normals inward so the texture
+    // appears on the inside (standard equirectangular panorama trick).
+    const geo = new THREE.SphereGeometry(500, 64, 32);
+    geo.scale(-1, 1, 1);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+    panoSphere = new THREE.Mesh(geo, mat);
+    panoScene3.add(panoSphere);
+
+    // ── Pointer / touch controls ──────────────────────────────
+    function onDown(x, y) { panoPointerDown = true; panoLastX = x; panoLastY = y; }
+    function onMove(x, y) {
+        if (!panoPointerDown) return;
+        panoCameraLon -= (x - panoLastX) * 0.25;
+        panoCameraLat += (y - panoLastY) * 0.15;
+        panoCameraLat  = Math.max(-85, Math.min(85, panoCameraLat));
+        panoLastX = x; panoLastY = y;
+    }
+    function onUp() { panoPointerDown = false; }
+
+    panoCanvas.addEventListener('mousedown',  e => onDown(e.clientX, e.clientY));
+    panoCanvas.addEventListener('mousemove',  e => onMove(e.clientX, e.clientY));
+    panoCanvas.addEventListener('mouseup',    onUp);
+    panoCanvas.addEventListener('mouseleave', onUp);
+
+    panoCanvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    panoCanvas.addEventListener('touchmove',  e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    panoCanvas.addEventListener('touchend',   onUp);
+
+    // Resize
+    window.addEventListener('resize', () => {
+        if (!panoRenderer) return;
+        panoRenderer.setSize(window.innerWidth, window.innerHeight);
+        panoCamera3.aspect = window.innerWidth / window.innerHeight;
+        panoCamera3.updateProjectionMatrix();
+    });
+}
+
+function panoRenderLoop() {
+    panoAnimFrame = requestAnimationFrame(panoRenderLoop);
+    const phi   = THREE.MathUtils.degToRad(90 - panoCameraLat);
+    const theta = THREE.MathUtils.degToRad(panoCameraLon);
+    panoCamera3.lookAt(
+        500 * Math.sin(phi) * Math.cos(theta),
+        500 * Math.cos(phi),
+        500 * Math.sin(phi) * Math.sin(theta)
+    );
+    panoRenderer.render(panoScene3, panoCamera3);
+}
+
 function enterPanorama(locKey) {
     const loc = LOCATIONS[locKey];
     hideAllMenus();
@@ -660,43 +747,53 @@ function enterPanorama(locKey) {
     currentPanoList  = loc.panoramas;
     currentPanoIndex = 0;
     currentPanoName  = loc.name;
+    panoCameraLon    = 0;
+    panoCameraLat    = 0;
 
-    // Show the container BEFORE loading the texture.
-    // The panorama scene is embedded inside a hidden div; if it's still
-    // display:none when we set the sky src, Three.js has no canvas context
-    // to upload the texture — result is a white sphere.
-    arScene.style.display = 'none';
+    arScene.style.display        = 'none';
     panoramaContainer.style.display = 'block';
 
-    // Give the browser one frame to paint the now-visible canvas,
-    // fire a resize so A-Frame knows its real dimensions, then load photo.
-    setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-        loadPanorama(0);
-    }, 150);
+    // Build the renderer once (lazy init keeps startup fast)
+    if (!panoRenderer) initPanoRenderer();
+
+    loadPanorama(0);
+    panoRenderLoop();
 }
 
 function loadPanorama(index) {
     currentPanoIndex = index;
     const total = currentPanoList.length;
 
-    const sky = document.querySelector('#panoSky');
+    panoLoadingEl.style.display = 'block';
 
-    // FIX: set src directly to the image URL — NOT a '#assetId' reference.
-    // A-Frame's asset system caches textures by ID; swapping the underlying
-    // img.src doesn't invalidate that cache, so the sky never updates.
-    // Passing a bare URL forces A-Frame to load it as a fresh texture.
-    sky.setAttribute('src', currentPanoList[index]);
+    // TextureLoader works directly — no A-Frame asset pipeline involved
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+    loader.load(
+        currentPanoList[index],
+        (texture) => {
+            // Swap the sphere's material map and mark it dirty
+            panoSphere.material.map = texture;
+            panoSphere.material.color.set(0xffffff);   // reveal texture
+            panoSphere.material.needsUpdate = true;
+            panoLoadingEl.style.display = 'none';
+        },
+        undefined,
+        (err) => {
+            console.error('Panorama load error:', currentPanoList[index], err);
+            panoLoadingEl.textContent = '⚠️ Could not load photo.';
+        }
+    );
 
     panoLabel.textContent = currentPanoName;
 
     if (total > 1) {
-        panoCounter.textContent = `(${index + 1} / ${total})`;
-        panoCounter.style.display = 'inline';
-        prevPanoBtn.style.display = 'inline';
-        nextPanoBtn.style.display = 'inline';
-        prevPanoBtn.disabled = (index === 0);
-        nextPanoBtn.disabled = (index === total - 1);
+        panoCounter.textContent    = `(${index + 1} / ${total})`;
+        panoCounter.style.display  = 'inline';
+        prevPanoBtn.style.display  = 'inline';
+        nextPanoBtn.style.display  = 'inline';
+        prevPanoBtn.disabled       = (index === 0);
+        nextPanoBtn.disabled       = (index === total - 1);
     } else {
         panoCounter.style.display = 'none';
         prevPanoBtn.style.display = 'none';
@@ -705,6 +802,7 @@ function loadPanorama(index) {
 }
 
 function exitPanoramaView() {
+    if (panoAnimFrame) { cancelAnimationFrame(panoAnimFrame); panoAnimFrame = null; }
     panoramaContainer.style.display = 'none';
     arScene.style.display = 'block';
     arScene.systems["mindar-image-system"].start();
