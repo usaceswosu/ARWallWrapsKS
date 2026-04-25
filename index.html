@@ -670,6 +670,12 @@ function loadPanorama(index) {
     currentPanoIndex = index;
     const total = currentPanoList.length;
 
+    // Wait for image to load before applying to sky
+    panoramaImg.onload = () => {
+        const sky = document.querySelector('a-sky');
+        sky.setAttribute('src', '#panoramaImg');
+    };
+    
     panoramaImg.src = currentPanoList[index];
     panoLabel.textContent = currentPanoName;
 
