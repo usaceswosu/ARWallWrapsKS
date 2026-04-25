@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AR Wall Prototype: Multi Sub-Target</title>
+    <title>Keystone Lake AR Map</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -15,86 +15,100 @@
             font-family: sans-serif;
         }
 
-        /* ── Start overlay ── */
+        /* ── Full-screen overlay base ── */
+        .fullOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        /* ── Start screen ── */
         #overlay {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 9999;
+            background: rgba(0,0,0,0.85);
+            z-index: 19999;
             display: flex;
             justify-content: center;
             align-items: center;
             flex-direction: column;
             color: white;
         }
-
         #instructions {
             margin-top: 20px;
             text-align: center;
             max-width: 80%;
-            line-height: 1.4;
+            line-height: 1.5;
+            color: #ccc;
+        }
+        #startButton {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background: #FFD700;
+            color: #333;
+            font-weight: bold;
         }
 
-        /* ── Confirm overlays (shared style) ── */
-        .confirmOverlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.75);
-            z-index: 10000;
-            display: none;
-            justify-content: center;
-            align-items: center;
+        /* ── Shared modal card ── */
+        .modal-bg {
+            background: rgba(0,0,0,0.78);
         }
-
         .modal-box {
-            background: #222;
-            padding: 30px 24px;
+            background: #1e1e1e;
+            padding: 28px 22px;
             border-radius: 16px;
             border: 2px solid #FFD700;
             text-align: center;
-            box-shadow: 0 0 30px rgba(0,0,0,0.6);
-            max-width: 320px;
+            box-shadow: 0 0 36px rgba(0,0,0,0.7);
+            max-width: 330px;
             width: 90%;
             color: white;
         }
-
         .modal-box h2 {
-            margin: 0 0 8px;
-            font-size: 1.2rem;
+            margin: 0 0 6px;
+            font-size: 1.15rem;
             color: #FFD700;
         }
-
         .modal-box p {
-            font-size: 0.95rem;
-            color: #ccc;
-            margin: 0 0 20px;
+            font-size: 0.9rem;
+            color: #aaa;
+            margin: 0 0 18px;
         }
 
+        /* ── Button styles ── */
         .btn-row {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 9px;
         }
-
         .btn {
-            padding: 13px 20px;
-            font-size: 1rem;
+            padding: 13px 18px;
+            font-size: 0.95rem;
             cursor: pointer;
             border: none;
             border-radius: 8px;
             font-weight: bold;
             transition: opacity 0.15s;
+            width: 100%;
         }
-        .btn:active { opacity: 0.75; }
-
+        .btn:active { opacity: 0.72; }
         .btn-gold   { background: #FFD700; color: #222; }
         .btn-blue   { background: #3a8fd4; color: white; }
         .btn-green  { background: #3aad6e; color: white; }
-        .btn-muted  { background: #555;    color: #ccc; }
+        .btn-purple { background: #8b5cf6; color: white; }
+        .btn-muted  { background: #444;    color: #bbb; }
+        .btn-back   { background: transparent; color: #888;
+                      border: 1px solid #555; margin-top: 6px; }
 
-        /* ── 360 panorama container ── */
+        /* ── Panorama container ── */
         #panoramaContainer {
             display: none;
             position: fixed;
@@ -102,31 +116,61 @@
             width: 100%; height: 100%;
             z-index: 8000;
         }
+        #panoramaScene { width: 100%; height: 100%; }
 
-        #panoramaScene {
-            width: 100%;
-            height: 100%;
-        }
-
-        #exitPanorama {
+        /* Floating bar over panorama */
+        #panoBar {
             position: fixed;
-            top: 18px;
+            top: 14px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 8500;
-            padding: 12px 28px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            border-radius: 8px;
-            background: rgba(0,0,0,0.65);
-            color: #FFD700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.6);
             border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 8px 14px;
             backdrop-filter: blur(4px);
         }
+        .pano-nav-btn {
+            background: none;
+            border: none;
+            color: #FFD700;
+            font-size: 1.4rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .pano-nav-btn:disabled { color: #555; cursor: default; }
+        #panoLabel {
+            color: #FFD700;
+            font-size: 0.9rem;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        #panoCounter {
+            color: #aaa;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        #exitPanorama {
+            background: none;
+            border: none;
+            color: #FFD700;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 4px;
+            white-space: nowrap;
+        }
+        .pano-divider {
+            color: #555;
+            font-size: 1rem;
+        }
 
-        /* ── Video overlay (shared) ── */
+        /* ── Video container ── */
         #videoContainer {
             display: none;
             position: fixed;
@@ -138,22 +182,20 @@
             justify-content: center;
             align-items: center;
         }
-
         #locationVideo {
             width: 100%;
             max-height: 80vh;
             object-fit: contain;
             background: #000;
         }
-
         #exitVideo {
             position: fixed;
-            top: 18px;
+            top: 14px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 8500;
-            padding: 12px 28px;
-            font-size: 1rem;
+            padding: 10px 24px;
+            font-size: 0.95rem;
             font-weight: bold;
             cursor: pointer;
             border: 2px solid #FFD700;
@@ -161,372 +203,580 @@
             background: rgba(0,0,0,0.65);
             color: #FFD700;
             backdrop-filter: blur(4px);
-        }
-
-        button#startButton {
-            padding: 15px 30px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            border: none;
-            border-radius: 8px;
-            background: #FFD700;
-            color: #333;
-            font-weight: bold;
+            white-space: nowrap;
         }
     </style>
 </head>
-
 <body>
 
-    <!-- ── Start screen ── -->
-    <div id="overlay">
-        <button id="startButton">Start AR Experience</button>
-        <div id="instructions">
-            Point at the poster.<br>
-            Walk closer to markers to trigger activities.
-        </div>
+<!-- ════════════════════════════════════════
+     START SCREEN
+════════════════════════════════════════ -->
+<div id="overlay">
+    <button id="startButton">Start AR Experience</button>
+    <div id="instructions">
+        Point your camera at the Keystone Lake map.<br>
+        Approach a glowing marker to explore that area.
     </div>
+</div>
 
 
-    <!-- ══════════════════════════════════════════
-         MODAL 1 — Brush Creek (bottom-right)
-    ══════════════════════════════════════════ -->
-    <div id="confirmOverlay1" class="confirmOverlay">
-        <div class="modal-box">
-            <h2>Brush Creek</h2>
-            <p>What would you like to do?</p>
-            <div class="btn-row">
-                <button class="btn btn-gold"  id="btn360-1">🔭 View 360° Campground</button>
-                <button class="btn btn-green" id="btnVideo-1">▶ Watch Location Video</button>
-                <button class="btn btn-blue"  id="btnWebsite-1">🌐 Open Web Page</button>
-                <button class="btn btn-muted" id="btnNone-1">✕ Stay Here</button>
-            </div>
-        </div>
+<!-- ════════════════════════════════════════
+     LOCATION PICKER (nested targets only)
+     Populated dynamically by JS
+════════════════════════════════════════ -->
+<div id="pickerOverlay" class="fullOverlay modal-bg" style="z-index: 10001;">
+    <div class="modal-box">
+        <h2 id="pickerTitle">Select a Location</h2>
+        <p>Which area would you like to explore?</p>
+        <div id="pickerBtns" class="btn-row"></div>
+        <button id="pickerBack" class="btn btn-back">✕ Stay Here</button>
     </div>
+</div>
 
-    <!-- ══════════════════════════════════════════
-         MODAL 2 — Appalachia Bay (just off center left)
-    ══════════════════════════════════════════ -->
-    <div id="confirmOverlay2" class="confirmOverlay">
-        <div class="modal-box">
-            <h2>Keystone Lake: Appalachia Bay</h2>
-            <p>What would you like to do?</p>
-            <div class="btn-row">
-                <button class="btn btn-gold"  id="btn360-2">🔭 View 360° Campground</button>
-                <button class="btn btn-green" id="btnVideo-2">▶ Watch Location Video</button>
-                <button class="btn btn-blue"  id="btnWebsite-2">🌐 Open Web Page</button>
-                <button class="btn btn-muted" id="btnNone-2">✕ Stay Here</button>
-            </div>
-        </div>
+
+<!-- ════════════════════════════════════════
+     ACTION MENU (single or after picker)
+     Populated dynamically by JS
+════════════════════════════════════════ -->
+<div id="actionOverlay" class="fullOverlay modal-bg" style="z-index: 10000;">
+    <div class="modal-box">
+        <h2 id="actionTitle"></h2>
+        <p>What would you like to do?</p>
+        <div id="actionBtns" class="btn-row"></div>
+        <button id="actionBack" class="btn btn-back">← Back</button>
     </div>
-
-    <!-- ══════════════════════════════════════════
-         MODAL 3 — Walnut Creek (top-middle)
-         No video for this location
-    ══════════════════════════════════════════ -->
-    <div id="confirmOverlay3" class="confirmOverlay">
-        <div class="modal-box">
-            <h2>Keystone Lake: Walnut Creek</h2>
-            <p>What would you like to do?</p>
-            <div class="btn-row">
-                <button class="btn btn-gold"  id="btn360-3">🔭 View 360° Campground</button>
-                <button class="btn btn-blue"  id="btnWebsite-3">🌐 Open Web Page</button>
-                <button class="btn btn-muted" id="btnNone-3">✕ Stay Here</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════
-         MODAL 4 — Washington Irving (off center right)
-    ══════════════════════════════════════════ -->
-    <div id="confirmOverlay4" class="confirmOverlay">
-        <div class="modal-box">
-            <h2>Washington Irving</h2>
-            <p>What would you like to do?</p>
-            <div class="btn-row">
-                <button class="btn btn-gold"  id="btn360-4">🔭 View 360° Campground</button>
-                <button class="btn btn-green" id="btnVideo-4">▶ Watch Location Video</button>
-                <button class="btn btn-blue"  id="btnWebsite-4">🌐 Open Web Page</button>
-                <button class="btn btn-muted" id="btnNone-4">✕ Stay Here</button>
-            </div>
-        </div>
-    </div>
+</div>
 
 
-    <!-- ── 360° panorama view (shared) ── -->
-    <div id="panoramaContainer">
-        <a-scene id="panoramaScene"
-            embedded
-            vr-mode-ui="enabled: false"
-            device-orientation-permission-ui="enabled: false"
-            renderer="colorManagement: false;">
-            <a-assets>
-                <img id="panoramaImg" src="assets/panorama.jpg" crossorigin="anonymous">
-            </a-assets>
-            <a-sky src="#panoramaImg" rotation="0 -90 0"></a-sky>
-            <a-camera look-controls="enabled: true; touchEnabled: true;" wasd-controls="enabled: false"
-                      position="0 0 0">
-            </a-camera>
-        </a-scene>
-        <button id="exitPanorama">← Back to AR</button>
-    </div>
-
-    <!-- ── Video overlay (shared — src is set dynamically per location) ── -->
-    <div id="videoContainer">
-        <button id="exitVideo">← Back to AR</button>
-        <video id="locationVideo"
-            controls
-            playsinline
-            preload="none">
-        </video>
-    </div>
-
-
-    <!-- ── Main AR scene ── -->
-    <!--
-        imageTargetSrc must contain ALL targets in order:
-          targetIndex 0 — main poster
-          targetIndex 1 — Brush Creek sub-target        (bottom-right)
-          targetIndex 2 — Appalachia Bay sub-target     (just off center left)
-          targetIndex 3 — Walnut Creek sub-target       (top-middle)
-          targetIndex 4 — Washington Irving sub-target  (off center right)
-    -->
-    <a-scene id="arScene"
-        mindar-image="imageTargetSrc: map_targets.mind; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;"
-        vr-mode-ui="enabled: false;"
+<!-- ════════════════════════════════════════
+     360° PANORAMA VIEW
+════════════════════════════════════════ -->
+<div id="panoramaContainer">
+    <a-scene id="panoramaScene"
+        embedded
+        vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
-        renderer="colorManagement: false; logarithmicDepthBuffer: true;">
-
+        renderer="colorManagement: false;">
         <a-assets>
-            <img id="markerImage" src="assets/marker.png" crossorigin="anonymous">
+            <img id="panoramaImg" src="" crossorigin="anonymous">
         </a-assets>
-
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-        <!-- Main poster overlay — four marker dots -->
-        <a-entity mindar-image-target="targetIndex: 0">
-
-            <!-- Bottom-right marker (Brush Creek) -->
-            <a-image
-                src="#markerImage"
-                position="0.3 -0.2 0.03"
-                width="0.15" height="0.15"
-                material="shader: flat;"
-                animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
-            </a-image>
-
-            <!-- Just off center left marker (Appalachia Bay) -->
-            <a-image
-                src="#markerImage"
-                position="-0.15 0.05 0.03"
-                width="0.15" height="0.15"
-                material="shader: flat;"
-                animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
-            </a-image>
-
-            <!-- Top-middle marker (Walnut Creek) -->
-            <a-image
-                src="#markerImage"
-                position="0.0 0.3 0.03"
-                width="0.15" height="0.15"
-                material="shader: flat;"
-                animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
-            </a-image>
-
-            <!-- Off center right marker (Washington Irving) -->
-            <a-image
-                src="#markerImage"
-                position="0.2 0.05 0.03"
-                width="0.15" height="0.15"
-                material="shader: flat;"
-                animation="property: scale; to: 1.1 1.1 1.1; dir: alternate; dur: 1000; loop: true">
-            </a-image>
-
-        </a-entity>
-
-        <!-- Sub-target 1: Brush Creek (bottom-right) -->
-        <a-entity id="subTarget1" mindar-image-target="targetIndex: 1"></a-entity>
-
-        <!-- Sub-target 2: Appalachia Bay (just off center left) -->
-        <a-entity id="subTarget2" mindar-image-target="targetIndex: 2"></a-entity>
-
-        <!-- Sub-target 3: Walnut Creek (top-middle) -->
-        <a-entity id="subTarget3" mindar-image-target="targetIndex: 3"></a-entity>
-
-        <!-- Sub-target 4: Washington Irving (off center right) -->
-        <a-entity id="subTarget4" mindar-image-target="targetIndex: 4"></a-entity>
-
+        <a-sky src="#panoramaImg" rotation="0 -90 0"></a-sky>
+        <a-camera look-controls="enabled: true; touchEnabled: true;"
+                  wasd-controls="enabled: false"
+                  position="0 0 0">
+        </a-camera>
     </a-scene>
 
+    <!-- Navigation bar: ← location name  1/3  → | Back to AR -->
+    <div id="panoBar">
+        <button class="pano-nav-btn" id="prevPano">&#8592;</button>
+        <span id="panoLabel">Location</span>
+        <span id="panoCounter"></span>
+        <button class="pano-nav-btn" id="nextPano">&#8594;</button>
+        <span class="pano-divider">|</span>
+        <button id="exitPanorama">← Back to AR</button>
+    </div>
+</div>
 
-    <script>
-        /* ════════════════════════════════════════
-           URL CONFIG — swap these out when ready
-        ════════════════════════════════════════ */
-        const URLS = {
-            brushCreek:        "https://www.recreation.gov/camping/campgrounds/10040524",
-            appalachiaBay:     "https://www.recreation.gov/camping/campgrounds/10309470",
-            walnutCreek:       "https://www.recreation.gov/camping/campgrounds/10041510?tab=campsites",
-            washingtonIrving:  "https://www.recreation.gov/camping/campgrounds/233667"
-        };
 
-        /* ════════════════════════════════════════
-           360° panorama paths
-        ════════════════════════════════════════ */
-        const PANORAMAS = {
-            brushCreek:        "assets/panorama_brush_creek.jpg",
-            appalachiaBay:     "assets/panorama_appalachia.jpg",
-            walnutCreek:       "assets/panorama_walnut.jpg",
-            washingtonIrving:  "assets/panorama_washington_irving.jpg"
-        };
+<!-- ════════════════════════════════════════
+     VIDEO VIEW
+════════════════════════════════════════ -->
+<div id="videoContainer">
+    <button id="exitVideo">← Back to AR</button>
+    <video id="locationVideo" controls playsinline preload="none"></video>
+</div>
 
-        /* ════════════════════════════════════════
-           Video paths (null = no video for that location)
-        ════════════════════════════════════════ */
-        const VIDEOS = {
-            brushCreek:        "assets/Brush Creek Park.mp4",
-            appalachiaBay:     "assets/Appalacia Bay Park.mp4",
-            walnutCreek:       null,
-            washingtonIrving:  "assets/Washington Irving Park.mp4"
-        };
 
-        /* ── Element refs ── */
-        const overlay           = document.querySelector('#overlay');
-        const startButton       = document.querySelector('#startButton');
-        const panoramaContainer = document.querySelector('#panoramaContainer');
-        const panoramaImg       = document.querySelector('#panoramaImg');
-        const exitPanoramaBtn   = document.querySelector('#exitPanorama');
-        const videoContainer    = document.querySelector('#videoContainer');
-        const locationVideo     = document.querySelector('#locationVideo');
-        const exitVideoBtn      = document.querySelector('#exitVideo');
-        const arScene           = document.querySelector('#arScene');
+<!-- ════════════════════════════════════════
+     MAIN AR SCENE
+     .mind file must contain targets in this order:
+       Index 0 — main map poster
+       Index 1 — Feyodi Creek        (top-left)
+       Index 2 — Cowskin Bay         (top-left, lower/right)
+       Index 3 — Walnut Creek        (top-right)
+       Index 4 — Appalachia/Wash.Irv (just right of center)
+       Index 5 — New Mannford        (bottom-center)
+       Index 6 — Keystone/WW/Brush   (bottom-right)
+════════════════════════════════════════ -->
+<a-scene id="arScene"
+    mindar-image="imageTargetSrc: map_targets.mind;
+                  filterMinCF: 0.0001; filterBeta: 0.001;
+                  warmupTolerance: 5; missTolerance: 5;"
+    vr-mode-ui="enabled: false;"
+    device-orientation-permission-ui="enabled: false"
+    renderer="colorManagement: false; logarithmicDepthBuffer: true;">
 
-        const subTargets = [
-            {
-                entity:   document.querySelector('#subTarget1'),
-                overlay:  document.querySelector('#confirmOverlay1'),
-                panorama: PANORAMAS.brushCreek,
-                website:  URLS.brushCreek,
-                video:    VIDEOS.brushCreek
-            },
-            {
-                entity:   document.querySelector('#subTarget2'),
-                overlay:  document.querySelector('#confirmOverlay2'),
-                panorama: PANORAMAS.appalachiaBay,
-                website:  URLS.appalachiaBay,
-                video:    VIDEOS.appalachiaBay
-            },
-            {
-                entity:   document.querySelector('#subTarget3'),
-                overlay:  document.querySelector('#confirmOverlay3'),
-                panorama: PANORAMAS.walnutCreek,
-                website:  URLS.walnutCreek,
-                video:    VIDEOS.walnutCreek   // null — no video button in this modal
-            },
-            {
-                entity:   document.querySelector('#subTarget4'),
-                overlay:  document.querySelector('#confirmOverlay4'),
-                panorama: PANORAMAS.washingtonIrving,
-                website:  URLS.washingtonIrving,
-                video:    VIDEOS.washingtonIrving
-            }
-        ];
+    <a-assets>
+        <img id="markerImage" src="assets/marker.png" crossorigin="anonymous">
+    </a-assets>
 
-        const triggered = [false, false, false, false];
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        /* ── Helpers ── */
-        function hideAllModals() {
-            subTargets.forEach(t => t.overlay.style.display = 'none');
-        }
+    <!-- Main poster — marker dots positioned to match each sub-target location.
+         Adjust the `position` values here to align with your printed map. -->
+    <a-entity mindar-image-target="targetIndex: 0">
 
-        function showModal(index) {
-            hideAllModals();
-            subTargets[index].overlay.style.display = 'flex';
-        }
+        <!-- Feyodi Creek — top-left -->
+        <a-image src="#markerImage" position="-0.35 0.30 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
 
-        function enterPanorama(panoramaPath) {
-            hideAllModals();
-            panoramaImg.src = panoramaPath;
-            arScene.style.display = 'none';
-            panoramaContainer.style.display = 'block';
-            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
-        }
+        <!-- Cowskin Bay — top-left, lower and right of Feyodi -->
+        <a-image src="#markerImage" position="-0.18 0.18 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
 
-        function exitPanoramaView() {
-            panoramaContainer.style.display = 'none';
-            arScene.style.display = 'block';
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-                triggered.fill(false);
-            }, 200);
-        }
+        <!-- Walnut Creek — top-right -->
+        <a-image src="#markerImage" position="0.35 0.30 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
 
-        function enterVideo(videoPath) {
-            hideAllModals();
-            locationVideo.src = videoPath;
-            arScene.style.display = 'none';
-            videoContainer.style.display = 'flex';
-            locationVideo.play();
-        }
+        <!-- Appalachia Bay / Washington Irving — just right of center -->
+        <a-image src="#markerImage" position="0.15 0.05 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
 
-        function exitVideoView() {
-            locationVideo.pause();
-            locationVideo.removeAttribute('src');  // release the file
-            locationVideo.load();
-            videoContainer.style.display = 'none';
-            arScene.style.display = 'block';
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-                triggered.fill(false);
-            }, 200);
-        }
+        <!-- New Mannford — bottom-center -->
+        <a-image src="#markerImage" position="0.00 -0.25 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
 
-        /* ── Start button ── */
-        startButton.addEventListener('click', () => {
-            overlay.style.display = 'none';
-            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+        <!-- Keystone / White Water / Brush Creek — bottom-right -->
+        <a-image src="#markerImage" position="0.35 -0.25 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
+
+    </a-entity>
+
+    <!-- Sub-target entities — one per physical sub-target image -->
+    <a-entity id="subTarget1" mindar-image-target="targetIndex: 1"></a-entity>
+    <a-entity id="subTarget2" mindar-image-target="targetIndex: 2"></a-entity>
+    <a-entity id="subTarget3" mindar-image-target="targetIndex: 3"></a-entity>
+    <a-entity id="subTarget4" mindar-image-target="targetIndex: 4"></a-entity>
+    <a-entity id="subTarget5" mindar-image-target="targetIndex: 5"></a-entity>
+    <a-entity id="subTarget6" mindar-image-target="targetIndex: 6"></a-entity>
+
+</a-scene>
+
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   LOCATION CONFIG
+   ─────────────────────────────────────────────────────────────
+   Each entry describes one visitable location.
+
+   panoramas : array of image paths.
+               • One path   → single 360° photo, no nav arrows.
+               • Two+ paths → multiple photos; prev/next arrows
+                              appear automatically in the viewer.
+               TO ADD A NEW PHOTO: just push another filename
+               into the array, e.g.:
+               panoramas: [
+                   "assets/panorama_feyodi_1.jpg",
+                   "assets/panorama_feyodi_2.jpg"   ← new photo
+               ]
+
+   video     : path to an .mp4, or null if none.
+   website   : URL string, or null if none.
+════════════════════════════════════════════════════════════════ */
+const LOCATIONS = {
+
+    feyodiCreek: {
+        name:      "Feyodi Creek",
+        panoramas: ["assets/panorama_feyodi.jpg"],
+        video:     null,
+        website:   null
+    },
+
+    cowskinBay: {
+        name:      "Cowskin Bay",
+        panoramas: ["assets/panorama_cowskin.jpg"],
+        video:     null,
+        website:   null
+    },
+
+    walnutCreek: {
+        name:      "Walnut Creek",
+        panoramas: ["assets/panorama_walnut.jpg"],
+        video:     null,
+        website:   "https://www.recreation.gov/camping/campgrounds/10041510?tab=campsites"
+    },
+
+    appalachiaBay: {
+        name:      "Appalachia Bay",
+        panoramas: ["assets/panorama_appalachia.jpg"],
+        video:     "assets/Appalacia Bay Park.mp4",
+        website:   "https://www.recreation.gov/camping/campgrounds/10309470"
+    },
+
+    washingtonIrving: {
+        name:      "Washington Irving",
+        panoramas: ["assets/panorama_washington_irving.jpg"],
+        video:     "assets/Washington Irving Park.mp4",
+        website:   "https://www.recreation.gov/camping/campgrounds/233667"
+    },
+
+    newMannford: {
+        name:      "New Mannford",
+        panoramas: ["assets/panorama_mannford.jpg"],
+        video:     null,
+        website:   null
+    },
+
+    keystoneStatePark: {
+        name:      "Keystone State Park",
+        panoramas: ["assets/panorama_keystone.jpg"],
+        video:     null,
+        website:   null
+    },
+
+    whiteWaterBay: {
+        name:      "White Water Bay",
+        panoramas: ["assets/panorama_whitewater.jpg"],
+        video:     null,
+        website:   null
+    },
+
+    brushCreek: {
+        name:      "Brush Creek",
+        panoramas: ["assets/panorama_brush_creek.jpg"],
+        video:     "assets/Brush Creek Park.mp4",
+        website:   "https://www.recreation.gov/camping/campgrounds/10040524"
+    }
+
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   SUB-TARGET CONFIG
+   ─────────────────────────────────────────────────────────────
+   Each entry maps one physical sub-target image (by its index
+   in the .mind file) to either a single location or a nested
+   picker that lists multiple locations.
+
+   type "single"
+     → targetFound shows the action menu for `location` directly.
+
+   type "nested"
+     → targetFound shows a picker listing all keys in `locations`.
+        Pressing one shows that location's action menu.
+        The back button on the action menu returns to the picker.
+
+   markerPos
+     → A-Frame position string for the pulsing dot on the main
+        poster. Tune x/y to align with your printed map.
+        Format: "x y z" (z should stay 0.03)
+════════════════════════════════════════════════════════════════ */
+const SUB_TARGETS = [
+
+    {   // Index 1
+        type:       "single",
+        location:   "feyodiCreek",
+        markerPos:  "-0.35 0.30 0.03"
+    },
+    {   // Index 2
+        type:       "single",
+        location:   "cowskinBay",
+        markerPos:  "-0.18 0.18 0.03"
+    },
+    {   // Index 3
+        type:       "single",
+        location:   "walnutCreek",
+        markerPos:  "0.35 0.30 0.03"
+    },
+    {   // Index 4 — nested: two locations share one sub-target
+        type:         "nested",
+        pickerTitle:  "Keystone Lake",
+        locations:    ["appalachiaBay", "washingtonIrving"],
+        markerPos:    "0.15 0.05 0.03"
+    },
+    {   // Index 5
+        type:       "single",
+        location:   "newMannford",
+        markerPos:  "0.00 -0.25 0.03"
+    },
+    {   // Index 6 — nested: three locations share one sub-target
+        type:         "nested",
+        pickerTitle:  "Keystone Lake South",
+        locations:    ["keystoneStatePark", "whiteWaterBay", "brushCreek"],
+        markerPos:    "0.35 -0.25 0.03"
+    }
+
+];
+
+
+/* ════════════════════════════════════════════════════════════════
+   ELEMENT REFS
+════════════════════════════════════════════════════════════════ */
+const overlay           = document.querySelector('#overlay');
+const startButton       = document.querySelector('#startButton');
+const arScene           = document.querySelector('#arScene');
+
+// Picker overlay
+const pickerOverlay     = document.querySelector('#pickerOverlay');
+const pickerTitle       = document.querySelector('#pickerTitle');
+const pickerBtns        = document.querySelector('#pickerBtns');
+const pickerBack        = document.querySelector('#pickerBack');
+
+// Action overlay
+const actionOverlay     = document.querySelector('#actionOverlay');
+const actionTitle       = document.querySelector('#actionTitle');
+const actionBtns        = document.querySelector('#actionBtns');
+const actionBack        = document.querySelector('#actionBack');
+
+// Panorama
+const panoramaContainer = document.querySelector('#panoramaContainer');
+const panoramaImg       = document.querySelector('#panoramaImg');
+const panoLabel         = document.querySelector('#panoLabel');
+const panoCounter       = document.querySelector('#panoCounter');
+const prevPanoBtn       = document.querySelector('#prevPano');
+const nextPanoBtn       = document.querySelector('#nextPano');
+const exitPanoramaBtn   = document.querySelector('#exitPanorama');
+
+// Video
+const videoContainer    = document.querySelector('#videoContainer');
+const locationVideo     = document.querySelector('#locationVideo');
+const exitVideoBtn      = document.querySelector('#exitVideo');
+
+
+/* ════════════════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════════════════ */
+// One cooldown flag per sub-target (indices 0-5 matching SUB_TARGETS)
+const triggered = new Array(SUB_TARGETS.length).fill(false);
+
+// Panorama state
+let currentPanoList  = [];
+let currentPanoIndex = 0;
+let currentPanoName  = "";
+
+// Track whether action menu was reached via a picker (for back button)
+let actionCameFromPicker = false;
+// Track the nested config that opened the picker, so we can re-show it
+let activePicker = null;
+
+
+/* ════════════════════════════════════════════════════════════════
+   HIDE / SHOW HELPERS
+════════════════════════════════════════════════════════════════ */
+function hideAllMenus() {
+    pickerOverlay.style.display = 'none';
+    actionOverlay.style.display = 'none';
+}
+
+function showPicker(targetCfg) {
+    activePicker = targetCfg;
+    pickerTitle.textContent = targetCfg.pickerTitle || "Select a Location";
+    pickerBtns.innerHTML = "";
+
+    targetCfg.locations.forEach(locKey => {
+        const loc = LOCATIONS[locKey];
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-purple';
+        btn.textContent = "📍 " + loc.name;
+        btn.addEventListener('click', () => {
+            pickerOverlay.style.display = 'none';
+            showAction(locKey, true);
         });
+        pickerBtns.appendChild(btn);
+    });
 
-        /* ── Wire up each sub-target ── */
-        subTargets.forEach((target, i) => {
-            const n = i + 1; // button ID suffix (1-based)
+    pickerOverlay.style.display = 'flex';
+}
 
-            target.entity.addEventListener('targetFound', () => {
-                if (triggered[i]) return;
-                triggered[i] = true;
-                showModal(i);
-            });
+function showAction(locKey, fromPicker = false) {
+    const loc = LOCATIONS[locKey];
+    actionCameFromPicker = fromPicker;
 
-            target.entity.addEventListener('targetLost', () => {
-                triggered[i] = false;
-            });
+    actionTitle.textContent = loc.name;
+    actionBtns.innerHTML = "";
 
-            document.querySelector(`#btn360-${n}`).addEventListener('click', () => {
-                enterPanorama(target.panorama);
-            });
+    // 360° button — always present when panoramas exist
+    if (loc.panoramas && loc.panoramas.length > 0) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-gold';
+        btn.textContent = "🔭 View 360° Photo" + (loc.panoramas.length > 1 ? "s" : "");
+        btn.addEventListener('click', () => enterPanorama(locKey));
+        actionBtns.appendChild(btn);
+    }
 
-            document.querySelector(`#btnWebsite-${n}`).addEventListener('click', () => {
-                target.overlay.style.display = 'none';
-                window.open(target.website, '_blank');
-                setTimeout(() => { triggered[i] = false; }, 3000);
-            });
+    // Video button
+    if (loc.video) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-green';
+        btn.textContent = "▶ Watch Location Video";
+        btn.addEventListener('click', () => enterVideo(locKey));
+        actionBtns.appendChild(btn);
+    }
 
-            document.querySelector(`#btnNone-${n}`).addEventListener('click', () => {
-                target.overlay.style.display = 'none';
-                setTimeout(() => { triggered[i] = false; }, 4000);
-            });
-
-            // Wire video button only for locations that have a video
-            const videoBtn = document.querySelector(`#btnVideo-${n}`);
-            if (videoBtn && target.video) {
-                videoBtn.addEventListener('click', () => enterVideo(target.video));
-            }
+    // Website button
+    if (loc.website) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-blue';
+        btn.textContent = "🌐 Open Web Page";
+        btn.addEventListener('click', () => {
+            hideAllMenus();
+            window.open(loc.website, '_blank');
+            // Reset all triggers after a short cooldown so menus can re-fire
+            setTimeout(() => triggered.fill(false), 3000);
         });
+        actionBtns.appendChild(btn);
+    }
 
-        /* ── Exit buttons ── */
-        exitPanoramaBtn.addEventListener('click', () => exitPanoramaView());
-        exitVideoBtn.addEventListener('click',    () => exitVideoView());
-    </script>
+    // Back button label depends on origin
+    actionBack.textContent = fromPicker ? "← Choose Different Location" : "✕ Stay Here";
 
+    actionOverlay.style.display = 'flex';
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   PANORAMA
+════════════════════════════════════════════════════════════════ */
+function enterPanorama(locKey) {
+    const loc = LOCATIONS[locKey];
+    hideAllMenus();
+
+    currentPanoList  = loc.panoramas;
+    currentPanoIndex = 0;
+    currentPanoName  = loc.name;
+
+    loadPanorama(0);
+
+    arScene.style.display = 'none';
+    panoramaContainer.style.display = 'block';
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+}
+
+function loadPanorama(index) {
+    currentPanoIndex = index;
+    const total = currentPanoList.length;
+
+    panoramaImg.src = currentPanoList[index];
+    panoLabel.textContent = currentPanoName;
+
+    // Show counter only when there are multiple photos
+    if (total > 1) {
+        panoCounter.textContent = `(${index + 1} / ${total})`;
+        panoCounter.style.display = 'inline';
+        prevPanoBtn.style.display = 'inline';
+        nextPanoBtn.style.display = 'inline';
+        prevPanoBtn.disabled = (index === 0);
+        nextPanoBtn.disabled = (index === total - 1);
+    } else {
+        panoCounter.style.display = 'none';
+        prevPanoBtn.style.display = 'none';
+        nextPanoBtn.style.display = 'none';
+    }
+}
+
+function exitPanoramaView() {
+    panoramaContainer.style.display = 'none';
+    arScene.style.display = 'block';
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        triggered.fill(false);
+    }, 200);
+}
+
+prevPanoBtn.addEventListener('click', () => {
+    if (currentPanoIndex > 0) loadPanorama(currentPanoIndex - 1);
+});
+nextPanoBtn.addEventListener('click', () => {
+    if (currentPanoIndex < currentPanoList.length - 1) loadPanorama(currentPanoIndex + 1);
+});
+exitPanoramaBtn.addEventListener('click', () => exitPanoramaView());
+
+
+/* ════════════════════════════════════════════════════════════════
+   VIDEO
+════════════════════════════════════════════════════════════════ */
+function enterVideo(locKey) {
+    const loc = LOCATIONS[locKey];
+    hideAllMenus();
+
+    locationVideo.src = loc.video;
+    arScene.style.display = 'none';
+    videoContainer.style.display = 'flex';
+    locationVideo.play();
+}
+
+function exitVideoView() {
+    locationVideo.pause();
+    locationVideo.removeAttribute('src');
+    locationVideo.load();
+    videoContainer.style.display = 'none';
+    arScene.style.display = 'block';
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        triggered.fill(false);
+    }, 200);
+}
+
+exitVideoBtn.addEventListener('click', () => exitVideoView());
+
+
+/* ════════════════════════════════════════════════════════════════
+   MODAL BACK BUTTONS
+════════════════════════════════════════════════════════════════ */
+pickerBack.addEventListener('click', () => {
+    hideAllMenus();
+    // Short cooldown before allowing re-trigger
+    setTimeout(() => triggered.fill(false), 4000);
+});
+
+actionBack.addEventListener('click', () => {
+    actionOverlay.style.display = 'none';
+    if (actionCameFromPicker && activePicker) {
+        // Return to the location picker rather than dismissing entirely
+        showPicker(activePicker);
+    } else {
+        // Was a direct single-location menu — just dismiss
+        setTimeout(() => triggered.fill(false), 4000);
+    }
+});
+
+
+/* ════════════════════════════════════════════════════════════════
+   START BUTTON
+════════════════════════════════════════════════════════════════ */
+startButton.addEventListener('click', () => {
+    overlay.style.display = 'none';
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+});
+
+
+/* ════════════════════════════════════════════════════════════════
+   SUB-TARGET WIRING
+   Loops over SUB_TARGETS config — no manual per-target code needed.
+════════════════════════════════════════════════════════════════ */
+SUB_TARGETS.forEach((cfg, i) => {
+    const entity = document.querySelector(`#subTarget${i + 1}`);
+
+    entity.addEventListener('targetFound', () => {
+        if (triggered[i]) return;
+        triggered[i] = true;
+
+        if (cfg.type === 'nested') {
+            showPicker(cfg);
+        } else {
+            showAction(cfg.location, false);
+        }
+    });
+
+    entity.addEventListener('targetLost', () => {
+        triggered[i] = false;
+    });
+});
+
+</script>
 </body>
 </html>
