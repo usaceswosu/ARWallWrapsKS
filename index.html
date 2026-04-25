@@ -654,6 +654,7 @@ function showAction(locKey, fromPicker = false) {
 function enterPanorama(locKey) {
     const loc = LOCATIONS[locKey];
     hideAllMenus();
+    arScene.systems["mindar-image-system"].stop();
 
     currentPanoList  = loc.panoramas;
     currentPanoIndex = 0;
@@ -697,6 +698,7 @@ function loadPanorama(index) {
 function exitPanoramaView() {
     panoramaContainer.style.display = 'none';
     arScene.style.display = 'block';
+    arScene.systems["mindar-image-system"].start();
     setTimeout(() => {
         window.dispatchEvent(new Event('resize'));
         triggered.fill(false);
@@ -718,6 +720,7 @@ exitPanoramaBtn.addEventListener('click', () => exitPanoramaView());
 function enterVideo(locKey) {
     const loc = LOCATIONS[locKey];
     hideAllMenus();
+    arScene.systems["mindar-image-system"].stop();
 
     locationVideo.src = loc.video;
     arScene.style.display = 'none';
@@ -731,6 +734,7 @@ function exitVideoView() {
     locationVideo.load();
     videoContainer.style.display = 'none';
     arScene.style.display = 'block';
+    arScene.systems["mindar-image-system"].start();
     setTimeout(() => {
         window.dispatchEvent(new Event('resize'));
         triggered.fill(false);
@@ -766,6 +770,7 @@ actionBack.addEventListener('click', () => {
 ════════════════════════════════════════════════════════════════ */
 startButton.addEventListener('click', () => {
     overlay.style.display = 'none';
+    await arScene.systems["mindar-image-system"].start();
     setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 });
 
