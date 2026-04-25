@@ -282,10 +282,10 @@
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
         renderer="colorManagement: false;">
-        <a-assets>
-            <img id="panoramaImg" src="" crossorigin="anonymous">
-        </a-assets>
-        <a-sky src="#panoramaImg" rotation="0 -90 0"></a-sky>
+        <!-- No <a-assets> img here — A-Frame caches by asset ID and never
+             re-fetches when the src changes. We set the sky src directly
+             to the file URL each time, bypassing the asset system. -->
+        <a-sky id="panoSky" rotation="0 -90 0"></a-sky>
         <a-camera look-controls="enabled: true; touchEnabled: true;"
                   wasd-controls="enabled: false"
                   position="0 0 0">
@@ -556,7 +556,6 @@ const actionBack        = document.querySelector('#actionBack');
 
 // Panorama
 const panoramaContainer = document.querySelector('#panoramaContainer');
-const panoramaImg       = document.querySelector('#panoramaImg');
 const panoLabel         = document.querySelector('#panoLabel');
 const panoCounter       = document.querySelector('#panoCounter');
 const prevPanoBtn       = document.querySelector('#prevPano');
@@ -662,23 +661,33 @@ function enterPanorama(locKey) {
     currentPanoIndex = 0;
     currentPanoName  = loc.name;
 
-    loadPanorama(0);
-
+    // Show the container BEFORE loading the texture.
+    // The panorama scene is embedded inside a hidden div; if it's still
+    // display:none when we set the sky src, Three.js has no canvas context
+    // to upload the texture — result is a white sphere.
     arScene.style.display = 'none';
     panoramaContainer.style.display = 'block';
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+
+    // Give the browser one frame to paint the now-visible canvas,
+    // fire a resize so A-Frame knows its real dimensions, then load photo.
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        loadPanorama(0);
+    }, 150);
 }
 
 function loadPanorama(index) {
     currentPanoIndex = index;
     const total = currentPanoList.length;
 
-    panoramaImg.onload = () => {
-        const sky = document.querySelector('a-sky');
-        sky.setAttribute('src', '#panoramaImg');
-    };
-    
-    panoramaImg.src = currentPanoList[index];
+    const sky = document.querySelector('#panoSky');
+
+    // FIX: set src directly to the image URL — NOT a '#assetId' reference.
+    // A-Frame's asset system caches textures by ID; swapping the underlying
+    // img.src doesn't invalidate that cache, so the sky never updates.
+    // Passing a bare URL forces A-Frame to load it as a fresh texture.
+    sky.setAttribute('src', currentPanoList[index]);
+
     panoLabel.textContent = currentPanoName;
 
     if (total > 1) {
