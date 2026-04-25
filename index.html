@@ -887,46 +887,51 @@ startButton.addEventListener('click', async () => {
     errorMsg.style.display   = 'none';
 
     try {
-        // Wait for A-Frame's internal scene setup if not done yet
+        // Step 1 — wait for A-Frame's scene DOM to finish loading
         if (!arScene.hasLoaded) {
             await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Scene load timed out')), 15000);
-                arScene.addEventListener('loaded', () => {
-                    clearTimeout(timeout);
-                    resolve();
-                }, { once: true });
+                const t = setTimeout(() => reject(new Error('Scene load timed out')), 15000);
+                arScene.addEventListener('loaded', () => { clearTimeout(t); resolve(); }, { once: true });
             });
         }
 
-        // DON'T await start() — MindAR's promise only resolves after the
-        // camera is fully warmed up and tracking, which takes several seconds
-        // and makes the app look frozen. Fire it, hide the overlay immediately,
-        // and let MindAR paint its camera feed to the canvas on its own schedule.
-        arScene.systems["mindar-image-system"].start()
-            .catch(err => {
-                // Camera permission denied or hardware error — put overlay back
-                console.error("MindAR start failed:", err);
-                overlay.style.display = 'flex';
-                startButton.disabled = false;
-                startButton.textContent = 'Try Again';
-                loadingMsg.style.display = 'none';
-                let msg = '⚠️ Could not start the camera.';
-                if (err && (err.name === 'NotAllowedError' || String(err).includes('permission'))) {
-                    msg = '⚠️ Camera access was denied. Please allow camera permission and try again.';
-                } else if (err && err.message) {
-                    msg = '⚠️ ' + err.message;
-                }
-                errorMsg.textContent = msg;
-                errorMsg.style.display = 'block';
-            });
+        // Step 2 — MindAR registers its system slightly AFTER the scene
+        // 'loaded' event fires, so systems["mindar-image-system"] can still
+        // be undefined at that point.  Poll every 100 ms until it appears.
+        const mindARSystem = await new Promise((resolve, reject) => {
+            const t = setTimeout(() => reject(new Error('AR system did not initialise in time')), 10000);
+            const interval = setInterval(() => {
+                const sys = arScene.systems["mindar-image-system"];
+                if (sys) { clearInterval(interval); clearTimeout(t); resolve(sys); }
+            }, 100);
+        });
 
-        // Hide the start overlay right away — MindAR shows the camera feed itself
+        // Step 3 — fire start() WITHOUT await.
+        // MindAR's promise only resolves once tracking is warmed up (can take
+        // 5-15 s on device), which would freeze the UI on the loading screen.
+        // Instead, hide the overlay now and let MindAR paint the camera feed
+        // to the canvas on its own schedule.
+        mindARSystem.start().catch(err => {
+            console.error('MindAR start failed:', err);
+            overlay.style.display = 'flex';
+            startButton.disabled = false;
+            startButton.textContent = 'Try Again';
+            loadingMsg.style.display = 'none';
+            let msg = '⚠️ Could not start the camera.';
+            if (err && (err.name === 'NotAllowedError' || String(err).includes('permission'))) {
+                msg = '⚠️ Camera access was denied. Please allow it in your browser settings and try again.';
+            } else if (err && err.message) {
+                msg = '⚠️ ' + err.message;
+            }
+            errorMsg.textContent = msg;
+            errorMsg.style.display = 'block';
+        });
+
         overlay.style.display = 'none';
         setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 
     } catch (err) {
-        // Scene load timed out
-        console.error("Scene setup failed:", err);
+        console.error('Scene setup failed:', err);
         startButton.disabled = false;
         startButton.textContent = 'Try Again';
         loadingMsg.style.display = 'none';
