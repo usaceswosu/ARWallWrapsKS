@@ -881,14 +881,13 @@ actionBack.addEventListener('click', () => {
    3. Show a loading message while MindAR warms up.
 ════════════════════════════════════════════════════════════════ */
 startButton.addEventListener('click', async () => {
-    // Disable button and show loading state
     startButton.disabled = true;
     startButton.textContent = 'Starting…';
     loadingMsg.style.display = 'block';
     errorMsg.style.display   = 'none';
 
     try {
-        // Wait for A-Frame to finish its internal setup if it hasn't yet
+        // Wait for A-Frame's internal scene setup if not done yet
         if (!arScene.hasLoaded) {
             await new Promise((resolve, reject) => {
                 const timeout = setTimeout(() => reject(new Error('Scene load timed out')), 15000);
@@ -899,29 +898,39 @@ startButton.addEventListener('click', async () => {
             });
         }
 
-        // Now it's safe to start MindAR (this triggers the camera permission prompt)
-        await arScene.systems["mindar-image-system"].start();
+        // DON'T await start() — MindAR's promise only resolves after the
+        // camera is fully warmed up and tracking, which takes several seconds
+        // and makes the app look frozen. Fire it, hide the overlay immediately,
+        // and let MindAR paint its camera feed to the canvas on its own schedule.
+        arScene.systems["mindar-image-system"].start()
+            .catch(err => {
+                // Camera permission denied or hardware error — put overlay back
+                console.error("MindAR start failed:", err);
+                overlay.style.display = 'flex';
+                startButton.disabled = false;
+                startButton.textContent = 'Try Again';
+                loadingMsg.style.display = 'none';
+                let msg = '⚠️ Could not start the camera.';
+                if (err && (err.name === 'NotAllowedError' || String(err).includes('permission'))) {
+                    msg = '⚠️ Camera access was denied. Please allow camera permission and try again.';
+                } else if (err && err.message) {
+                    msg = '⚠️ ' + err.message;
+                }
+                errorMsg.textContent = msg;
+                errorMsg.style.display = 'block';
+            });
 
-        // Success — hide the entire start overlay
+        // Hide the start overlay right away — MindAR shows the camera feed itself
         overlay.style.display = 'none';
         setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 
     } catch (err) {
-        console.error("AR start failed:", err);
-
-        // Put the button back so the user can try again
+        // Scene load timed out
+        console.error("Scene setup failed:", err);
         startButton.disabled = false;
         startButton.textContent = 'Try Again';
         loadingMsg.style.display = 'none';
-
-        // Show a friendly error
-        let msg = '⚠️ Could not start the camera.';
-        if (err && (err.name === 'NotAllowedError' || (err.message && err.message.includes('permission')))) {
-            msg = '⚠️ Camera access was denied. Please allow camera permission in your browser settings and try again.';
-        } else if (err && err.message) {
-            msg = '⚠️ ' + err.message;
-        }
-        errorMsg.textContent = msg;
+        errorMsg.textContent = '⚠️ ' + (err.message || 'Failed to load AR scene.');
         errorMsg.style.display = 'block';
     }
 });
