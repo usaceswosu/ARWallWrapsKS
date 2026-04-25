@@ -8,40 +8,210 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
     <style>
-        html, body { margin: 0; height: 100%; overflow: hidden; font-family: sans-serif; }
-        .fullOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; justify-content: center; align-items: center; z-index: 10000; }
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 19999; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; }
-        #instructions { margin-top: 20px; text-align: center; max-width: 80%; line-height: 1.5; color: #ccc; }
-        #startButton { padding: 15px 30px; font-size: 1.2rem; cursor: pointer; border: none; border-radius: 8px; background: #FFD700; color: #333; font-weight: bold; }
-        .modal-bg { background: rgba(0,0,0,0.78); }
-        .modal-box { background: #1e1e1e; padding: 28px 22px; border-radius: 16px; border: 2px solid #FFD700; text-align: center; box-shadow: 0 0 36px rgba(0,0,0,0.7); max-width: 330px; width: 90%; color: white; }
-        .modal-box h2 { margin: 0 0 6px; font-size: 1.15rem; color: #FFD700; }
-        .modal-box p { font-size: 0.9rem; color: #aaa; margin: 0 0 18px; }
-        .btn-row { display: flex; flex-direction: column; gap: 9px; }
-        .btn { padding: 13px 18px; font-size: 0.95rem; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; transition: opacity 0.15s; width: 100%; }
+        html, body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        /* ── Full-screen overlay base ── */
+        .fullOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        /* ── Start screen ── */
+        #overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 19999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+        }
+        #instructions {
+            margin-top: 20px;
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.5;
+            color: #ccc;
+        }
+        #startButton {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background: #FFD700;
+            color: #333;
+            font-weight: bold;
+        }
+
+        /* ── Shared modal card ── */
+        .modal-bg {
+            background: rgba(0,0,0,0.78);
+        }
+        .modal-box {
+            background: #1e1e1e;
+            padding: 28px 22px;
+            border-radius: 16px;
+            border: 2px solid #FFD700;
+            text-align: center;
+            box-shadow: 0 0 36px rgba(0,0,0,0.7);
+            max-width: 330px;
+            width: 90%;
+            color: white;
+        }
+        .modal-box h2 {
+            margin: 0 0 6px;
+            font-size: 1.15rem;
+            color: #FFD700;
+        }
+        .modal-box p {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin: 0 0 18px;
+        }
+
+        /* ── Button styles ── */
+        .btn-row {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+        .btn {
+            padding: 13px 18px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: opacity 0.15s;
+            width: 100%;
+        }
         .btn:active { opacity: 0.72; }
         .btn-gold   { background: #FFD700; color: #222; }
         .btn-blue   { background: #3a8fd4; color: white; }
         .btn-green  { background: #3aad6e; color: white; }
         .btn-purple { background: #8b5cf6; color: white; }
         .btn-muted  { background: #444;    color: #bbb; }
-        .btn-back   { background: transparent; color: #888; border: 1px solid #555; margin-top: 6px; }
-        #panoramaContainer { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 8000; }
+        .btn-back   { background: transparent; color: #888;
+                      border: 1px solid #555; margin-top: 6px; }
+
+        /* ── Panorama container ── */
+        #panoramaContainer {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 8000;
+        }
         #panoramaScene { width: 100%; height: 100%; }
-        #panoBar { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 8500; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.6); border: 2px solid #FFD700; border-radius: 10px; padding: 8px 14px; backdrop-filter: blur(4px); }
-        .pano-nav-btn { background: none; border: none; color: #FFD700; font-size: 1.4rem; cursor: pointer; padding: 0 4px; line-height: 1; }
+
+        /* Floating bar over panorama */
+        #panoBar {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 8500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 8px 14px;
+            backdrop-filter: blur(4px);
+        }
+        .pano-nav-btn {
+            background: none;
+            border: none;
+            color: #FFD700;
+            font-size: 1.4rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
         .pano-nav-btn:disabled { color: #555; cursor: default; }
-        #panoLabel { color: #FFD700; font-size: 0.9rem; font-weight: bold; white-space: nowrap; }
-        #panoCounter { color: #aaa; font-size: 0.8rem; white-space: nowrap; }
-        #exitPanorama { background: none; border: none; color: #FFD700; font-size: 0.9rem; font-weight: bold; cursor: pointer; padding: 0 4px; white-space: nowrap; }
-        .pano-divider { color: #555; font-size: 1rem; }
-        #videoContainer { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 8000; background: #000; flex-direction: column; justify-content: center; align-items: center; }
-        #locationVideo { width: 100%; max-height: 80vh; object-fit: contain; background: #000; }
-        #exitVideo { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 8500; padding: 10px 24px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border: 2px solid #FFD700; border-radius: 8px; background: rgba(0,0,0,0.65); color: #FFD700; backdrop-filter: blur(4px); white-space: nowrap; }
+        #panoLabel {
+            color: #FFD700;
+            font-size: 0.9rem;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        #panoCounter {
+            color: #aaa;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        #exitPanorama {
+            background: none;
+            border: none;
+            color: #FFD700;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 4px;
+            white-space: nowrap;
+        }
+        .pano-divider {
+            color: #555;
+            font-size: 1rem;
+        }
+
+        /* ── Video container ── */
+        #videoContainer {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 8000;
+            background: #000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #locationVideo {
+            width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            background: #000;
+        }
+        #exitVideo {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 8500;
+            padding: 10px 24px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid #FFD700;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.65);
+            color: #FFD700;
+            backdrop-filter: blur(4px);
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
 
+<!-- ════════════════════════════════════════
+     START SCREEN
+════════════════════════════════════════ -->
 <div id="overlay">
     <button id="startButton">Start AR Experience</button>
     <div id="instructions">
@@ -50,6 +220,10 @@
     </div>
 </div>
 
+
+<!-- ════════════════════════════════════════
+     LOCATION PICKER (nested targets only)
+════════════════════════════════════════ -->
 <div id="pickerOverlay" class="fullOverlay modal-bg" style="z-index: 10001;">
     <div class="modal-box">
         <h2 id="pickerTitle">Select a Location</h2>
@@ -59,6 +233,10 @@
     </div>
 </div>
 
+
+<!-- ════════════════════════════════════════
+     ACTION MENU
+════════════════════════════════════════ -->
 <div id="actionOverlay" class="fullOverlay modal-bg" style="z-index: 10000;">
     <div class="modal-box">
         <h2 id="actionTitle"></h2>
@@ -68,12 +246,16 @@
     </div>
 </div>
 
+
 <!-- ════════════════════════════════════════
      360° PANORAMA VIEW
-     NOTE: <a-sky> has NO src here — it is set
-     directly via setAttribute in loadPanorama().
-     This avoids A-Frame's asset caching problem
-     that causes a black screen on dynamic swaps.
+
+     IMPORTANT: <a-sky> intentionally has NO src attribute here.
+     The src is set at runtime via panoramaSky.setAttribute('src', ...)
+     inside loadPanorama(). This is required because A-Frame's asset
+     system caches texture bindings at scene init time — if we used
+     a bound <img> and swapped its src in JS, A-Frame would never
+     see the change and the sky would stay black.
 ════════════════════════════════════════ -->
 <div id="panoramaContainer">
     <a-scene id="panoramaScene"
@@ -81,12 +263,18 @@
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
         renderer="colorManagement: false;">
+        <a-assets>
+            <!-- Placeholder keeps A-Frame's asset system happy;
+                 actual panorama src is set via setAttribute below -->
+            <img id="panoramaImg" crossorigin="anonymous">
+        </a-assets>
         <a-sky id="panoramaSky" rotation="0 -90 0"></a-sky>
         <a-camera look-controls="enabled: true; touchEnabled: true;"
                   wasd-controls="enabled: false"
                   position="0 0 0">
         </a-camera>
     </a-scene>
+
     <div id="panoBar">
         <button class="pano-nav-btn" id="prevPano">&#8592;</button>
         <span id="panoLabel">Location</span>
@@ -97,11 +285,27 @@
     </div>
 </div>
 
+
+<!-- ════════════════════════════════════════
+     VIDEO VIEW
+════════════════════════════════════════ -->
 <div id="videoContainer">
     <button id="exitVideo">← Back to AR</button>
     <video id="locationVideo" controls playsinline preload="none"></video>
 </div>
 
+
+<!-- ════════════════════════════════════════
+     MAIN AR SCENE
+     .mind file target order:
+       Index 0 — main map poster
+       Index 1 — Feyodi Creek        (top-left)
+       Index 2 — Cowskin Bay         (top-left, lower/right of Feyodi)
+       Index 3 — Walnut Creek        (top-right)
+       Index 4 — Appalachia/Wash.Irv (just right of center)
+       Index 5 — New Mannford        (bottom-center)
+       Index 6 — Keystone/WW/Brush   (bottom-right)
+════════════════════════════════════════ -->
 <a-scene id="arScene"
     mindar-image="imageTargetSrc: map_targets.mind;
                   filterMinCF: 0.0001; filterBeta: 0.001;
@@ -116,13 +320,46 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
+    <!-- Main poster — six pulsing marker dots.
+         Adjust position x/y values to align with your printed map. -->
     <a-entity mindar-image-target="targetIndex: 0">
-        <a-image src="#markerImage" position="-0.35 0.30 0.03" width="0.12" height="0.12" material="shader: flat;" animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true"></a-image>
-        <a-image src="#markerImage" position="-0.18 0.18 0.03" width="0.12" height="0.12" material="shader: flat;" animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true"></a-image>
-        <a-image src="#markerImage" position="0.35 0.30 0.03"  width="0.12" height="0.12" material="shader: flat;" animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true"></a-image>
-        <a-image src="#markerImage" position="0.15 0.05 0.03"  width="0.12" height="0.12" material="shader: flat;" animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true"></a-image>
-        <a-image src="#markerImage" position="0.00 -0.25 0.03" width="0.12" height="0.12" material="shader: flat;" animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true"></a-image>
-        <a-image src="#markerImage" position="0.35 -0.25 0.03" width="0.12" height="0.12" material="shader: flat;" animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true"></a-image>
+
+        <!-- Feyodi Creek — top-left -->
+        <a-image src="#markerImage" position="-0.35 0.30 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
+
+        <!-- Cowskin Bay — top-left, lower and right of Feyodi -->
+        <a-image src="#markerImage" position="-0.18 0.18 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
+
+        <!-- Walnut Creek — top-right -->
+        <a-image src="#markerImage" position="0.35 0.30 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
+
+        <!-- Appalachia Bay / Washington Irving — just right of center -->
+        <a-image src="#markerImage" position="0.15 0.05 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
+
+        <!-- New Mannford — bottom-center -->
+        <a-image src="#markerImage" position="0.00 -0.25 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
+
+        <!-- Keystone / White Water / Brush Creek — bottom-right -->
+        <a-image src="#markerImage" position="0.35 -0.25 0.03"
+            width="0.12" height="0.12" material="shader: flat;"
+            animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 900; loop: true">
+        </a-image>
+
     </a-entity>
 
     <a-entity id="subTarget1" mindar-image-target="targetIndex: 1"></a-entity>
@@ -134,7 +371,19 @@
 
 </a-scene>
 
+
 <script>
+/* ════════════════════════════════════════════════════════════════
+   LOCATION CONFIG
+   ─────────────────────────────────────────────────────────────
+   panoramas : array of image paths.
+               One entry  → single photo, no nav arrows shown.
+               Two+ entries → prev/next arrows appear automatically.
+               TO ADD A PHOTO: push another filename into the array.
+
+   video   : mp4 path, or null.
+   website : URL string, or null.
+════════════════════════════════════════════════════════════════ */
 const LOCATIONS = {
 
     feyodiCreek: {
@@ -213,47 +462,93 @@ const LOCATIONS = {
 
 };
 
+
+/* ════════════════════════════════════════════════════════════════
+   SUB-TARGET CONFIG
+════════════════════════════════════════════════════════════════ */
 const SUB_TARGETS = [
-    { type: "single", location: "feyodiCreek",   markerPos: "-0.35 0.30 0.03" },
-    { type: "single", location: "cowskinBay",    markerPos: "-0.18 0.18 0.03" },
-    { type: "single", location: "walnutCreek",   markerPos: "0.35 0.30 0.03"  },
-    { type: "nested", pickerTitle: "Keystone Lake",       locations: ["appalachiaBay", "washingtonIrving"], markerPos: "0.15 0.05 0.03"  },
-    { type: "single", location: "newMannford",   markerPos: "0.00 -0.25 0.03" },
-    { type: "nested", pickerTitle: "Keystone Lake South", locations: ["keystoneStatePark", "whiteWaterBay", "brushCreek"], markerPos: "0.35 -0.25 0.03" }
+
+    {   // Index 1 — Feyodi Creek (top-left)
+        type:      "single",
+        location:  "feyodiCreek",
+        markerPos: "-0.35 0.30 0.03"
+    },
+    {   // Index 2 — Cowskin Bay (top-left, lower/right)
+        type:      "single",
+        location:  "cowskinBay",
+        markerPos: "-0.18 0.18 0.03"
+    },
+    {   // Index 3 — Walnut Creek (top-right)
+        type:      "single",
+        location:  "walnutCreek",
+        markerPos: "0.35 0.30 0.03"
+    },
+    {   // Index 4 — Appalachia Bay / Washington Irving (right of center)
+        type:        "nested",
+        pickerTitle: "Keystone Lake",
+        locations:   ["appalachiaBay", "washingtonIrving"],
+        markerPos:   "0.15 0.05 0.03"
+    },
+    {   // Index 5 — New Mannford (bottom-center)
+        type:      "single",
+        location:  "newMannford",
+        markerPos: "0.00 -0.25 0.03"
+    },
+    {   // Index 6 — Keystone / White Water / Brush Creek (bottom-right)
+        type:        "nested",
+        pickerTitle: "Keystone Lake South",
+        locations:   ["keystoneStatePark", "whiteWaterBay", "brushCreek"],
+        markerPos:   "0.35 -0.25 0.03"
+    }
+
 ];
 
-/* ── Element refs ── */
+
+/* ════════════════════════════════════════════════════════════════
+   ELEMENT REFS
+════════════════════════════════════════════════════════════════ */
 const overlay           = document.querySelector('#overlay');
 const startButton       = document.querySelector('#startButton');
 const arScene           = document.querySelector('#arScene');
+
 const pickerOverlay     = document.querySelector('#pickerOverlay');
 const pickerTitle       = document.querySelector('#pickerTitle');
 const pickerBtns        = document.querySelector('#pickerBtns');
 const pickerBack        = document.querySelector('#pickerBack');
+
 const actionOverlay     = document.querySelector('#actionOverlay');
 const actionTitle       = document.querySelector('#actionTitle');
 const actionBtns        = document.querySelector('#actionBtns');
 const actionBack        = document.querySelector('#actionBack');
+
 const panoramaContainer = document.querySelector('#panoramaContainer');
-const panoramaSky       = document.querySelector('#panoramaSky');   // ← direct sky ref
+const panoramaSky       = document.querySelector('#panoramaSky');
 const panoLabel         = document.querySelector('#panoLabel');
 const panoCounter       = document.querySelector('#panoCounter');
 const prevPanoBtn       = document.querySelector('#prevPano');
 const nextPanoBtn       = document.querySelector('#nextPano');
 const exitPanoramaBtn   = document.querySelector('#exitPanorama');
+
 const videoContainer    = document.querySelector('#videoContainer');
 const locationVideo     = document.querySelector('#locationVideo');
 const exitVideoBtn      = document.querySelector('#exitVideo');
 
-/* ── State ── */
+
+/* ════════════════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════════════════ */
 const triggered = new Array(SUB_TARGETS.length).fill(false);
+
 let currentPanoList  = [];
 let currentPanoIndex = 0;
 let currentPanoName  = "";
 let actionCameFromPicker = false;
 let activePicker = null;
 
-/* ── Menu helpers ── */
+
+/* ════════════════════════════════════════════════════════════════
+   MENU HELPERS
+════════════════════════════════════════════════════════════════ */
 function hideAllMenus() {
     pickerOverlay.style.display = 'none';
     actionOverlay.style.display = 'none';
@@ -263,6 +558,7 @@ function showPicker(targetCfg) {
     activePicker = targetCfg;
     pickerTitle.textContent = targetCfg.pickerTitle || "Select a Location";
     pickerBtns.innerHTML = "";
+
     targetCfg.locations.forEach(locKey => {
         const loc = LOCATIONS[locKey];
         const btn = document.createElement('button');
@@ -274,6 +570,7 @@ function showPicker(targetCfg) {
         });
         pickerBtns.appendChild(btn);
     });
+
     pickerOverlay.style.display = 'flex';
 }
 
@@ -290,6 +587,7 @@ function showAction(locKey, fromPicker = false) {
         btn.addEventListener('click', () => enterPanorama(locKey));
         actionBtns.appendChild(btn);
     }
+
     if (loc.video) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-green';
@@ -297,6 +595,7 @@ function showAction(locKey, fromPicker = false) {
         btn.addEventListener('click', () => enterVideo(locKey));
         actionBtns.appendChild(btn);
     }
+
     if (loc.website) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-blue';
@@ -313,7 +612,10 @@ function showAction(locKey, fromPicker = false) {
     actionOverlay.style.display = 'flex';
 }
 
-/* ── Panorama ── */
+
+/* ════════════════════════════════════════════════════════════════
+   PANORAMA
+════════════════════════════════════════════════════════════════ */
 function enterPanorama(locKey) {
     const loc = LOCATIONS[locKey];
     hideAllMenus();
@@ -330,9 +632,9 @@ function loadPanorama(index) {
     currentPanoIndex = index;
     const total = currentPanoList.length;
 
-    /*  KEY FIX: set src directly on <a-sky> via setAttribute.
-        Updating a bound <img> src does NOT cause A-Frame to
-        re-apply the texture — this call does.               */
+    // Set src directly on <a-sky> — this is the correct way to dynamically
+    // swap A-Frame textures. Updating a bound <img> src does not trigger
+    // A-Frame to re-apply the texture; setAttribute() does.
     panoramaSky.setAttribute('src', currentPanoList[index]);
 
     panoLabel.textContent = currentPanoName;
@@ -341,13 +643,13 @@ function loadPanorama(index) {
         panoCounter.textContent = `(${index + 1} / ${total})`;
         panoCounter.style.display = 'inline';
         prevPanoBtn.style.display = 'inline';
-        nextPanoBtn.style.display = 'inline';
+        nextPanoBtn.style.display  = 'inline';
         prevPanoBtn.disabled = (index === 0);
         nextPanoBtn.disabled = (index === total - 1);
     } else {
         panoCounter.style.display = 'none';
         prevPanoBtn.style.display = 'none';
-        nextPanoBtn.style.display = 'none';
+        nextPanoBtn.style.display  = 'none';
     }
 }
 
@@ -368,7 +670,10 @@ nextPanoBtn.addEventListener('click', () => {
 });
 exitPanoramaBtn.addEventListener('click', () => exitPanoramaView());
 
-/* ── Video ── */
+
+/* ════════════════════════════════════════════════════════════════
+   VIDEO
+════════════════════════════════════════════════════════════════ */
 function enterVideo(locKey) {
     const loc = LOCATIONS[locKey];
     hideAllMenus();
@@ -389,9 +694,13 @@ function exitVideoView() {
         triggered.fill(false);
     }, 200);
 }
+
 exitVideoBtn.addEventListener('click', () => exitVideoView());
 
-/* ── Modal back buttons ── */
+
+/* ════════════════════════════════════════════════════════════════
+   MODAL BACK BUTTONS
+════════════════════════════════════════════════════════════════ */
 pickerBack.addEventListener('click', () => {
     hideAllMenus();
     setTimeout(() => triggered.fill(false), 4000);
@@ -406,15 +715,22 @@ actionBack.addEventListener('click', () => {
     }
 });
 
-/* ── Start button ── */
+
+/* ════════════════════════════════════════════════════════════════
+   START BUTTON
+════════════════════════════════════════════════════════════════ */
 startButton.addEventListener('click', () => {
     overlay.style.display = 'none';
     setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 });
 
-/* ── Sub-target wiring ── */
+
+/* ════════════════════════════════════════════════════════════════
+   SUB-TARGET WIRING
+════════════════════════════════════════════════════════════════ */
 SUB_TARGETS.forEach((cfg, i) => {
     const entity = document.querySelector(`#subTarget${i + 1}`);
+
     entity.addEventListener('targetFound', () => {
         if (triggered[i]) return;
         triggered[i] = true;
@@ -424,10 +740,12 @@ SUB_TARGETS.forEach((cfg, i) => {
             showAction(cfg.location, false);
         }
     });
+
     entity.addEventListener('targetLost', () => {
         triggered[i] = false;
     });
 });
+
 </script>
 </body>
 </html>
