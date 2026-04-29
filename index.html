@@ -15,7 +15,6 @@
             font-family: sans-serif;
         }
 
-        /* ── Full-screen overlay base ── */
         .fullOverlay {
             position: fixed;
             top: 0; left: 0;
@@ -61,8 +60,6 @@
             color: #ccc;
             cursor: not-allowed;
         }
-
-        /* Loading spinner shown while MindAR warms up */
         #loadingMsg {
             display: none;
             margin-top: 16px;
@@ -80,9 +77,7 @@
         }
 
         /* ── Shared modal card ── */
-        .modal-bg {
-            background: rgba(0,0,0,0.78);
-        }
+        .modal-bg { background: rgba(0,0,0,0.78); }
         .modal-box {
             background: #1e1e1e;
             padding: 28px 22px;
@@ -94,23 +89,11 @@
             width: 90%;
             color: white;
         }
-        .modal-box h2 {
-            margin: 0 0 6px;
-            font-size: 1.15rem;
-            color: #FFD700;
-        }
-        .modal-box p {
-            font-size: 0.9rem;
-            color: #aaa;
-            margin: 0 0 18px;
-        }
+        .modal-box h2 { margin: 0 0 6px; font-size: 1.15rem; color: #FFD700; }
+        .modal-box p  { font-size: 0.9rem; color: #aaa; margin: 0 0 18px; }
 
-        /* ── Button styles ── */
-        .btn-row {
-            display: flex;
-            flex-direction: column;
-            gap: 9px;
-        }
+        /* ── Buttons ── */
+        .btn-row { display: flex; flex-direction: column; gap: 9px; }
         .btn {
             padding: 13px 18px;
             font-size: 0.95rem;
@@ -126,21 +109,28 @@
         .btn-blue   { background: #3a8fd4; color: white; }
         .btn-green  { background: #3aad6e; color: white; }
         .btn-purple { background: #8b5cf6; color: white; }
-        .btn-muted  { background: #444;    color: #bbb; }
         .btn-back   { background: transparent; color: #888;
                       border: 1px solid #555; margin-top: 6px; }
 
-        /* ── Panorama container ── */
+        /* ── Panorama container ──────────────────────────────────
+           KEY FIX: visibility:hidden instead of display:none.
+           display:none removes the element from layout, so the
+           embedded a-scene initializes its WebGL canvas at 0×0
+           pixels — permanently broken. visibility:hidden keeps
+           the element in layout at full size so WebGL initializes
+           correctly, while remaining invisible and non-interactive.
+        ─────────────────────────────────────────────────────────── */
         #panoramaContainer {
-            display: none;
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
             z-index: 8000;
+            visibility: hidden;
+            pointer-events: none;
         }
         #panoramaScene { width: 100%; height: 100%; }
 
-        /* Floating bar over panorama */
+        /* Nav bar floats above the panorama */
         #panoBar {
             position: fixed;
             top: 14px;
@@ -187,10 +177,7 @@
             padding: 0 4px;
             white-space: nowrap;
         }
-        .pano-divider {
-            color: #555;
-            font-size: 1rem;
-        }
+        .pano-divider { color: #555; font-size: 1rem; }
 
         /* ── Video container ── */
         #videoContainer {
@@ -246,8 +233,7 @@
 
 
 <!-- ════════════════════════════════════════
-     LOCATION PICKER (nested targets only)
-     Populated dynamically by JS
+     LOCATION PICKER
 ════════════════════════════════════════ -->
 <div id="pickerOverlay" class="fullOverlay modal-bg" style="z-index: 10001;">
     <div class="modal-box">
@@ -260,8 +246,7 @@
 
 
 <!-- ════════════════════════════════════════
-     ACTION MENU (single or after picker)
-     Populated dynamically by JS
+     ACTION MENU
 ════════════════════════════════════════ -->
 <div id="actionOverlay" class="fullOverlay modal-bg" style="z-index: 10000;">
     <div class="modal-box">
@@ -275,6 +260,12 @@
 
 <!-- ════════════════════════════════════════
      360° PANORAMA VIEW
+
+     The container uses visibility:hidden (not display:none)
+     so the embedded a-scene always has a properly sized canvas.
+     <a-sky> has no src — it is set via setAttribute in
+     loadPanorama() so A-Frame fetches the image fresh each time
+     rather than returning a stale cached empty binding.
 ════════════════════════════════════════ -->
 <div id="panoramaContainer">
     <a-scene id="panoramaScene"
@@ -282,17 +273,13 @@
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
         renderer="colorManagement: false;">
-        <a-assets>
-            <img id="panoramaImg" src="" crossorigin="anonymous">
-        </a-assets>
-        <a-sky src="#panoramaImg" rotation="0 -90 0"></a-sky>
+        <a-sky id="panoramaSky" rotation="0 -90 0"></a-sky>
         <a-camera look-controls="enabled: true; touchEnabled: true;"
                   wasd-controls="enabled: false"
                   position="0 0 0">
         </a-camera>
     </a-scene>
 
-    <!-- Navigation bar: ← location name  1/3  → | Back to AR -->
     <div id="panoBar">
         <button class="pano-nav-btn" id="prevPano">&#8592;</button>
         <span id="panoLabel">Location</span>
@@ -315,13 +302,7 @@
 
 <!-- ════════════════════════════════════════
      MAIN AR SCENE
-
-     KEY FIX: autoStart: false — prevents MindAR from requesting
-     the camera immediately on page load (which browsers block
-     without a user gesture, causing the white-screen freeze).
-     The camera is started explicitly when the user taps the button.
-
-     .mind file must contain targets in this order:
+     .mind file target order:
        Index 0 — main map poster
        Index 1 — Feyodi Creek        (top-left)
        Index 2 — Cowskin Bay         (top-left, lower/right)
@@ -343,12 +324,6 @@
         <img id="markerImage" src="assets/marker.png" crossorigin="anonymous">
     </a-assets>
 
-    <!-- NOTE: No explicit <a-camera> here.
-         MindAR injects its own camera for the AR feed.
-         Adding a second camera caused conflicts on some devices. -->
-
-    <!-- Main poster — marker dots positioned to match each sub-target location.
-         Adjust the `position` values here to align with your printed map. -->
     <a-entity mindar-image-target="targetIndex: 0">
 
         <!-- Feyodi Creek — top-left -->
@@ -389,7 +364,6 @@
 
     </a-entity>
 
-    <!-- Sub-target entities — one per physical sub-target image -->
     <a-entity id="subTarget1" mindar-image-target="targetIndex: 1"></a-entity>
     <a-entity id="subTarget2" mindar-image-target="targetIndex: 2"></a-entity>
     <a-entity id="subTarget3" mindar-image-target="targetIndex: 3"></a-entity>
@@ -403,16 +377,12 @@
 <script>
 /* ════════════════════════════════════════════════════════════════
    LOCATION CONFIG
-   ─────────────────────────────────────────────────────────────
-   Each entry describes one visitable location.
-
-   panoramas : array of image paths.
-               • One path   → single 360° photo, no nav arrows.
-               • Two+ paths → multiple photos; prev/next arrows
-                              appear automatically in the viewer.
-
-   video     : path to an .mp4, or null if none.
-   website   : URL string, or null if none.
+   panoramas : array of image paths from your /assets folder.
+               One entry  → single photo, no nav arrows.
+               Two+ entries → prev/next arrows appear automatically.
+               TO ADD A PHOTO: push another filename into the array.
+   video   : mp4 path, or null.
+   website : URL string, or null.
 ════════════════════════════════════════════════════════════════ */
 const LOCATIONS = {
 
@@ -433,10 +403,10 @@ const LOCATIONS = {
     walnutCreek: {
         name:      "Walnut Creek",
         panoramas: [
-                    "assets/Walnut Creek Boat Ramp.JPG",
-                    "assets/Walnut Creek Campground 1.JPG",
-                    "assets/Walnut Creek Shelter.JPG"
-                   ],
+            "assets/Walnut Creek Boat Ramp.JPG",
+            "assets/Walnut Creek Campground 1.JPG",
+            "assets/Walnut Creek Shelter.JPG"
+        ],
         video:     null,
         website:   "https://www.recreation.gov/camping/campgrounds/10041510?tab=campsites"
     },
@@ -458,19 +428,20 @@ const LOCATIONS = {
     newMannford: {
         name:      "New Mannford",
         panoramas: [
-                    "assets/New_Mannford_Boat_Ramp.JPG",
-                    "assets/New_Mannford_Ramp_Crosstimbers.JPG"
-                    ],
+            "assets/New_Mannford_Boat_Ramp.JPG",
+            "assets/New_Mannford_Ramp_Crosstimbers.JPG"
+        ],
         video:     null,
         website:   null
     },
 
     keystoneStatePark: {
         name:      "Keystone State Park",
-        panoramas: ["assets/Keystone_Overlook_Dam.JPG",
-                    "assets/Keystone_State_Park.JPG",
-                    "assets/Keystone_State_Park_Gen_Store.JPG"
-                   ],
+        panoramas: [
+            "assets/Keystone_Overlook_Dam.JPG",
+            "assets/Keystone_State_Park.JPG",
+            "assets/Keystone_State_Park_Gen_Store.JPG"
+        ],
         video:     null,
         website:   null
     },
@@ -496,40 +467,14 @@ const LOCATIONS = {
    SUB-TARGET CONFIG
 ════════════════════════════════════════════════════════════════ */
 const SUB_TARGETS = [
-
-    {   // Index 1
-        type:       "single",
-        location:   "feyodiCreek",
-        markerPos:  "-0.35 0.30 0.03"
-    },
-    {   // Index 2
-        type:       "single",
-        location:   "cowskinBay",
-        markerPos:  "-0.18 0.18 0.03"
-    },
-    {   // Index 3
-        type:       "single",
-        location:   "walnutCreek",
-        markerPos:  "0.35 0.30 0.03"
-    },
-    {   // Index 4 — nested: two locations share one sub-target
-        type:         "nested",
-        pickerTitle:  "Keystone Lake",
-        locations:    ["appalachiaBay", "washingtonIrving"],
-        markerPos:    "0.15 0.05 0.03"
-    },
-    {   // Index 5
-        type:       "single",
-        location:   "newMannford",
-        markerPos:  "0.00 -0.25 0.03"
-    },
-    {   // Index 6 — nested: three locations share one sub-target
-        type:         "nested",
-        pickerTitle:  "Keystone Lake South",
-        locations:    ["keystoneStatePark", "whiteWaterBay", "brushCreek"],
-        markerPos:    "0.35 -0.25 0.03"
-    }
-
+    { type: "single", location: "feyodiCreek",  markerPos: "-0.35 0.30 0.03" },
+    { type: "single", location: "cowskinBay",   markerPos: "-0.18 0.18 0.03" },
+    { type: "single", location: "walnutCreek",  markerPos: "0.35 0.30 0.03"  },
+    { type: "nested", pickerTitle: "Keystone Lake",
+      locations: ["appalachiaBay", "washingtonIrving"], markerPos: "0.15 0.05 0.03" },
+    { type: "single", location: "newMannford",  markerPos: "0.00 -0.25 0.03" },
+    { type: "nested", pickerTitle: "Keystone Lake South",
+      locations: ["keystoneStatePark", "whiteWaterBay", "brushCreek"], markerPos: "0.35 -0.25 0.03" }
 ];
 
 
@@ -542,28 +487,24 @@ const loadingMsg        = document.querySelector('#loadingMsg');
 const errorMsg          = document.querySelector('#errorMsg');
 const arScene           = document.querySelector('#arScene');
 
-// Picker overlay
 const pickerOverlay     = document.querySelector('#pickerOverlay');
 const pickerTitle       = document.querySelector('#pickerTitle');
 const pickerBtns        = document.querySelector('#pickerBtns');
 const pickerBack        = document.querySelector('#pickerBack');
 
-// Action overlay
 const actionOverlay     = document.querySelector('#actionOverlay');
 const actionTitle       = document.querySelector('#actionTitle');
 const actionBtns        = document.querySelector('#actionBtns');
 const actionBack        = document.querySelector('#actionBack');
 
-// Panorama
 const panoramaContainer = document.querySelector('#panoramaContainer');
-const panoramaImg       = document.querySelector('#panoramaImg');
+const panoramaSky       = document.querySelector('#panoramaSky');
 const panoLabel         = document.querySelector('#panoLabel');
 const panoCounter       = document.querySelector('#panoCounter');
 const prevPanoBtn       = document.querySelector('#prevPano');
 const nextPanoBtn       = document.querySelector('#nextPano');
 const exitPanoramaBtn   = document.querySelector('#exitPanorama');
 
-// Video
 const videoContainer    = document.querySelector('#videoContainer');
 const locationVideo     = document.querySelector('#locationVideo');
 const exitVideoBtn      = document.querySelector('#exitVideo');
@@ -577,13 +518,28 @@ const triggered = new Array(SUB_TARGETS.length).fill(false);
 let currentPanoList  = [];
 let currentPanoIndex = 0;
 let currentPanoName  = "";
-
 let actionCameFromPicker = false;
 let activePicker = null;
 
 
 /* ════════════════════════════════════════════════════════════════
-   HIDE / SHOW HELPERS
+   SHOW / HIDE PANORAMA CONTAINER
+   Uses visibility + pointer-events, NOT display, so the embedded
+   a-scene canvas always has proper dimensions.
+════════════════════════════════════════════════════════════════ */
+function showPanoramaContainer() {
+    panoramaContainer.style.visibility   = 'visible';
+    panoramaContainer.style.pointerEvents = 'auto';
+}
+
+function hidePanoramaContainer() {
+    panoramaContainer.style.visibility   = 'hidden';
+    panoramaContainer.style.pointerEvents = 'none';
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   MENU HELPERS
 ════════════════════════════════════════════════════════════════ */
 function hideAllMenus() {
     pickerOverlay.style.display = 'none';
@@ -613,7 +569,6 @@ function showPicker(targetCfg) {
 function showAction(locKey, fromPicker = false) {
     const loc = LOCATIONS[locKey];
     actionCameFromPicker = fromPicker;
-
     actionTitle.textContent = loc.name;
     actionBtns.innerHTML = "";
 
@@ -662,27 +617,24 @@ function enterPanorama(locKey) {
     currentPanoIndex = 0;
     currentPanoName  = loc.name;
 
-    loadPanorama(0);
-
     arScene.style.display = 'none';
-    panoramaContainer.style.display = 'block';
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+    showPanoramaContainer();
+    loadPanorama(0);
 }
 
 function loadPanorama(index) {
     currentPanoIndex = index;
     const total = currentPanoList.length;
 
-    panoramaImg.onload = () => {
-        const sky = document.querySelector('a-sky');
-        sky.setAttribute('src', '#panoramaImg');
-    };
-    
-    panoramaImg.src = currentPanoList[index];
+    // Direct URL setAttribute — works because the canvas was
+    // properly sized at init (visibility:hidden, not display:none).
+    // A-Frame fetches and applies the texture fresh each call.
+    panoramaSky.setAttribute('src', currentPanoList[index]);
+
     panoLabel.textContent = currentPanoName;
 
     if (total > 1) {
-        panoCounter.textContent = `(${index + 1} / ${total})`;
+        panoCounter.textContent   = `(${index + 1} / ${total})`;
         panoCounter.style.display = 'inline';
         prevPanoBtn.style.display = 'inline';
         nextPanoBtn.style.display = 'inline';
@@ -696,7 +648,7 @@ function loadPanorama(index) {
 }
 
 function exitPanoramaView() {
-    panoramaContainer.style.display = 'none';
+    hidePanoramaContainer();
     arScene.style.display = 'block';
     arScene.systems["mindar-image-system"].start();
     setTimeout(() => {
@@ -723,7 +675,7 @@ function enterVideo(locKey) {
     arScene.systems["mindar-image-system"].stop();
 
     locationVideo.src = loc.video;
-    arScene.style.display = 'none';
+    arScene.style.display        = 'none';
     videoContainer.style.display = 'flex';
     locationVideo.play();
 }
@@ -764,27 +716,19 @@ actionBack.addEventListener('click', () => {
 
 /* ════════════════════════════════════════════════════════════════
    START BUTTON
-   ─────────────────────────────────────────────────────────────
-   FIX SUMMARY:
-   1. Wait for A-Frame scene to fully load before calling .start()
-      (avoids "cannot read property of undefined" on the system).
-   2. Wrap in try/catch and surface a readable error message so
-      the user knows to grant camera permission instead of seeing
-      a blank screen.
-   3. Show a loading message while MindAR warms up.
 ════════════════════════════════════════════════════════════════ */
 startButton.addEventListener('click', async () => {
-    // Disable button and show loading state
     startButton.disabled = true;
     startButton.textContent = 'Starting…';
     loadingMsg.style.display = 'block';
     errorMsg.style.display   = 'none';
 
     try {
-        // Wait for A-Frame to finish its internal setup if it hasn't yet
         if (!arScene.hasLoaded) {
             await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Scene load timed out')), 15000);
+                const timeout = setTimeout(
+                    () => reject(new Error('Scene load timed out')), 15000
+                );
                 arScene.addEventListener('loaded', () => {
                     clearTimeout(timeout);
                     resolve();
@@ -792,25 +736,21 @@ startButton.addEventListener('click', async () => {
             });
         }
 
-        // Now it's safe to start MindAR (this triggers the camera permission prompt)
         await arScene.systems["mindar-image-system"].start();
 
-        // Success — hide the entire start overlay
         overlay.style.display = 'none';
         setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 
     } catch (err) {
         console.error("AR start failed:", err);
-
-        // Put the button back so the user can try again
         startButton.disabled = false;
         startButton.textContent = 'Try Again';
         loadingMsg.style.display = 'none';
 
-        // Show a friendly error
         let msg = '⚠️ Could not start the camera.';
-        if (err && (err.name === 'NotAllowedError' || (err.message && err.message.includes('permission')))) {
-            msg = '⚠️ Camera access was denied. Please allow camera permission in your browser settings and try again.';
+        if (err && (err.name === 'NotAllowedError' ||
+                   (err.message && err.message.includes('permission')))) {
+            msg = '⚠️ Camera access was denied. Please allow camera permission and try again.';
         } else if (err && err.message) {
             msg = '⚠️ ' + err.message;
         }
@@ -822,7 +762,6 @@ startButton.addEventListener('click', async () => {
 
 /* ════════════════════════════════════════════════════════════════
    SUB-TARGET WIRING
-   Loops over SUB_TARGETS config — no manual per-target code needed.
 ════════════════════════════════════════════════════════════════ */
 SUB_TARGETS.forEach((cfg, i) => {
     const entity = document.querySelector(`#subTarget${i + 1}`);
@@ -830,7 +769,6 @@ SUB_TARGETS.forEach((cfg, i) => {
     entity.addEventListener('targetFound', () => {
         if (triggered[i]) return;
         triggered[i] = true;
-
         if (cfg.type === 'nested') {
             showPicker(cfg);
         } else {
