@@ -4,8 +4,15 @@
     <title>Keystone Lake AR Map</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
+    <!-- AR libraries -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+    <!-- Pannellum — purpose-built equirectangular 360° viewer.
+         Replaces the second <a-scene> that was causing WebGL/canvas
+         conflicts when initialized inside a display:none container. -->
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
 
     <style>
         html, body {
@@ -15,7 +22,6 @@
             font-family: sans-serif;
         }
 
-        /* ── Full-screen overlay base ── */
         .fullOverlay {
             position: fixed;
             top: 0; left: 0;
@@ -61,7 +67,6 @@
             color: #ccc;
             cursor: not-allowed;
         }
-
         #loadingMsg {
             display: none;
             margin-top: 16px;
@@ -79,9 +84,7 @@
         }
 
         /* ── Shared modal card ── */
-        .modal-bg {
-            background: rgba(0,0,0,0.78);
-        }
+        .modal-bg { background: rgba(0,0,0,0.78); }
         .modal-box {
             background: #1e1e1e;
             padding: 28px 22px;
@@ -93,23 +96,11 @@
             width: 90%;
             color: white;
         }
-        .modal-box h2 {
-            margin: 0 0 6px;
-            font-size: 1.15rem;
-            color: #FFD700;
-        }
-        .modal-box p {
-            font-size: 0.9rem;
-            color: #aaa;
-            margin: 0 0 18px;
-        }
+        .modal-box h2 { margin: 0 0 6px; font-size: 1.15rem; color: #FFD700; }
+        .modal-box p  { font-size: 0.9rem; color: #aaa; margin: 0 0 18px; }
 
-        /* ── Button styles ── */
-        .btn-row {
-            display: flex;
-            flex-direction: column;
-            gap: 9px;
-        }
+        /* ── Buttons ── */
+        .btn-row { display: flex; flex-direction: column; gap: 9px; }
         .btn {
             padding: 13px 18px;
             font-size: 0.95rem;
@@ -125,21 +116,26 @@
         .btn-blue   { background: #3a8fd4; color: white; }
         .btn-green  { background: #3aad6e; color: white; }
         .btn-purple { background: #8b5cf6; color: white; }
-        .btn-muted  { background: #444;    color: #bbb; }
         .btn-back   { background: transparent; color: #888;
                       border: 1px solid #555; margin-top: 6px; }
 
-        /* ── Panorama container ── */
+        /* ── Panorama container (Pannellum lives here) ── */
         #panoramaContainer {
             display: none;
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
             z-index: 8000;
+            background: #000;
         }
-        #panoramaScene { width: 100%; height: 100%; }
 
-        /* Floating bar over panorama */
+        /* Pannellum fills this div */
+        #panoramaViewer {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Floating nav bar over the panorama */
         #panoBar {
             position: fixed;
             top: 14px;
@@ -186,10 +182,7 @@
             padding: 0 4px;
             white-space: nowrap;
         }
-        .pano-divider {
-            color: #555;
-            font-size: 1rem;
-        }
+        .pano-divider { color: #555; font-size: 1rem; }
 
         /* ── Video container ── */
         #videoContainer {
@@ -245,7 +238,7 @@
 
 
 <!-- ════════════════════════════════════════
-     LOCATION PICKER (nested targets only)
+     LOCATION PICKER
 ════════════════════════════════════════ -->
 <div id="pickerOverlay" class="fullOverlay modal-bg" style="z-index: 10001;">
     <div class="modal-box">
@@ -272,28 +265,12 @@
 
 <!-- ════════════════════════════════════════
      360° PANORAMA VIEW
-
-     FIX: <a-sky> now has id="panoramaSky" and NO src attribute.
-     The <a-assets> block is removed entirely.
-     loadPanorama() sets the image URL directly via setAttribute —
-     this bypasses A-Frame's asset cache and actually loads the texture.
-     The old approach set panoramaImg.src then pointed the sky at
-     '#panoramaImg' (an asset ID), which returned A-Frame's cached
-     empty-string registration and showed nothing.
+     No <a-scene> here. Pannellum creates its own
+     WebGL canvas inside #panoramaViewer at runtime,
+     completely separate from the MindAR scene.
 ════════════════════════════════════════ -->
 <div id="panoramaContainer">
-    <a-scene id="panoramaScene"
-        embedded
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false"
-        renderer="colorManagement: false;">
-        <a-sky id="panoramaSky" rotation="0 -90 0"></a-sky>
-        <a-camera look-controls="enabled: true; touchEnabled: true;"
-                  wasd-controls="enabled: false"
-                  position="0 0 0">
-        </a-camera>
-    </a-scene>
-
+    <div id="panoramaViewer"></div>
     <div id="panoBar">
         <button class="pano-nav-btn" id="prevPano">&#8592;</button>
         <span id="panoLabel">Location</span>
@@ -391,7 +368,7 @@
 <script>
 /* ════════════════════════════════════════════════════════════════
    LOCATION CONFIG
-   panoramas : array of image paths.
+   panoramas : array of relative image paths (your JPGs in /assets).
                One entry  → single photo, no nav arrows.
                Two+ entries → prev/next arrows appear automatically.
                TO ADD A PHOTO: push another filename into the array.
@@ -481,40 +458,14 @@ const LOCATIONS = {
    SUB-TARGET CONFIG
 ════════════════════════════════════════════════════════════════ */
 const SUB_TARGETS = [
-
-    {   // Index 1 — Feyodi Creek (top-left)
-        type:      "single",
-        location:  "feyodiCreek",
-        markerPos: "-0.35 0.30 0.03"
-    },
-    {   // Index 2 — Cowskin Bay (top-left, lower/right)
-        type:      "single",
-        location:  "cowskinBay",
-        markerPos: "-0.18 0.18 0.03"
-    },
-    {   // Index 3 — Walnut Creek (top-right)
-        type:      "single",
-        location:  "walnutCreek",
-        markerPos: "0.35 0.30 0.03"
-    },
-    {   // Index 4 — Appalachia Bay / Washington Irving (right of center)
-        type:        "nested",
-        pickerTitle: "Keystone Lake",
-        locations:   ["appalachiaBay", "washingtonIrving"],
-        markerPos:   "0.15 0.05 0.03"
-    },
-    {   // Index 5 — New Mannford (bottom-center)
-        type:      "single",
-        location:  "newMannford",
-        markerPos: "0.00 -0.25 0.03"
-    },
-    {   // Index 6 — Keystone / White Water / Brush Creek (bottom-right)
-        type:        "nested",
-        pickerTitle: "Keystone Lake South",
-        locations:   ["keystoneStatePark", "whiteWaterBay", "brushCreek"],
-        markerPos:   "0.35 -0.25 0.03"
-    }
-
+    { type: "single", location: "feyodiCreek",  markerPos: "-0.35 0.30 0.03" },
+    { type: "single", location: "cowskinBay",   markerPos: "-0.18 0.18 0.03" },
+    { type: "single", location: "walnutCreek",  markerPos: "0.35 0.30 0.03"  },
+    { type: "nested", pickerTitle: "Keystone Lake",
+      locations: ["appalachiaBay", "washingtonIrving"], markerPos: "0.15 0.05 0.03" },
+    { type: "single", location: "newMannford",  markerPos: "0.00 -0.25 0.03" },
+    { type: "nested", pickerTitle: "Keystone Lake South",
+      locations: ["keystoneStatePark", "whiteWaterBay", "brushCreek"], markerPos: "0.35 -0.25 0.03" }
 ];
 
 
@@ -538,7 +489,6 @@ const actionBtns        = document.querySelector('#actionBtns');
 const actionBack        = document.querySelector('#actionBack');
 
 const panoramaContainer = document.querySelector('#panoramaContainer');
-const panoramaSky       = document.querySelector('#panoramaSky');   // ← direct ref to <a-sky>
 const panoLabel         = document.querySelector('#panoLabel');
 const panoCounter       = document.querySelector('#panoCounter');
 const prevPanoBtn       = document.querySelector('#prevPano');
@@ -560,6 +510,9 @@ let currentPanoIndex = 0;
 let currentPanoName  = "";
 let actionCameFromPicker = false;
 let activePicker = null;
+
+// Pannellum viewer instance — kept so we can destroy it on exit
+let pannellumViewer = null;
 
 
 /* ════════════════════════════════════════════════════════════════
@@ -630,20 +583,16 @@ function showAction(locKey, fromPicker = false) {
 
 
 /* ════════════════════════════════════════════════════════════════
-   PANORAMA
+   PANORAMA — powered by Pannellum
 
-   THE FIX (two parts):
-
-   1. In the HTML, <a-sky> has id="panoramaSky" and NO src.
-      The <a-assets> block with <img id="panoramaImg"> is gone.
-      There is nothing for A-Frame to cache at load time.
-
-   2. loadPanorama() calls:
-          panoramaSky.setAttribute('src', directURL)
-      passing the actual file path, NOT an asset ID like '#panoramaImg'.
-      This tells A-Frame to fetch and apply the texture fresh each time.
-      A-Frame's setAttribute pipeline triggers a real texture reload
-      when given a URL; looking up a cached (empty) asset ID does not.
+   How it works:
+   - pannellum.viewer(containerId, config) creates a self-contained
+     WebGL canvas inside #panoramaViewer. It has zero interaction
+     with A-Frame or MindAR.
+   - Each call to loadPanorama() destroys the previous viewer and
+     creates a fresh one pointing at the new image URL directly.
+   - The image paths come straight from LOCATIONS[locKey].panoramas[].
+   - On exit, the viewer is destroyed and the AR system restarts.
 ════════════════════════════════════════════════════════════════ */
 function enterPanorama(locKey) {
     const loc = LOCATIONS[locKey];
@@ -654,25 +603,37 @@ function enterPanorama(locKey) {
     currentPanoIndex = 0;
     currentPanoName  = loc.name;
 
-    loadPanorama(0);
-
-    arScene.style.display = 'none';
+    arScene.style.display    = 'none';
     panoramaContainer.style.display = 'block';
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+
+    loadPanorama(0);
 }
 
 function loadPanorama(index) {
     currentPanoIndex = index;
     const total = currentPanoList.length;
 
-    // Pass the URL directly — no asset ID, no onload wrapper needed.
-    // A-Frame handles the fetch and texture upload internally.
-    panoramaSky.setAttribute('src', currentPanoList[index]);
+    // Destroy any existing viewer before creating a new one
+    if (pannellumViewer) {
+        pannellumViewer.destroy();
+        pannellumViewer = null;
+    }
 
+    // Create Pannellum viewer — direct URL, no A-Frame asset system involved
+    pannellumViewer = pannellum.viewer('panoramaViewer', {
+        type:         'equirectangular',
+        panorama:     currentPanoList[index],   // ← direct path from your array
+        autoLoad:     true,
+        showControls: false,                    // we provide our own nav bar
+        mouseZoom:    true,
+        touchPanSpeedCoeffFact: 1
+    });
+
+    // Update nav bar
     panoLabel.textContent = currentPanoName;
 
     if (total > 1) {
-        panoCounter.textContent  = `(${index + 1} / ${total})`;
+        panoCounter.textContent   = `(${index + 1} / ${total})`;
         panoCounter.style.display = 'inline';
         prevPanoBtn.style.display = 'inline';
         nextPanoBtn.style.display = 'inline';
@@ -686,6 +647,11 @@ function loadPanorama(index) {
 }
 
 function exitPanoramaView() {
+    if (pannellumViewer) {
+        pannellumViewer.destroy();
+        pannellumViewer = null;
+    }
+
     panoramaContainer.style.display = 'none';
     arScene.style.display = 'block';
     arScene.systems["mindar-image-system"].start();
@@ -713,7 +679,7 @@ function enterVideo(locKey) {
     arScene.systems["mindar-image-system"].stop();
 
     locationVideo.src = loc.video;
-    arScene.style.display = 'none';
+    arScene.style.display    = 'none';
     videoContainer.style.display = 'flex';
     locationVideo.play();
 }
@@ -779,7 +745,6 @@ startButton.addEventListener('click', async () => {
 
     } catch (err) {
         console.error("AR start failed:", err);
-
         startButton.disabled = false;
         startButton.textContent = 'Try Again';
         loadingMsg.style.display = 'none';
