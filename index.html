@@ -4,15 +4,9 @@
     <title>Keystone Lake AR Map</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-    <!-- AR libraries -->
+    <!-- AR libraries only — Pannellum is loaded lazily on first panorama open -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
-    <!-- Pannellum — purpose-built equirectangular 360° viewer.
-         Replaces the second <a-scene> that was causing WebGL/canvas
-         conflicts when initialized inside a display:none container. -->
-    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
-    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
 
     <style>
         html, body {
@@ -119,7 +113,7 @@
         .btn-back   { background: transparent; color: #888;
                       border: 1px solid #555; margin-top: 6px; }
 
-        /* ── Panorama container (Pannellum lives here) ── */
+        /* ── Panorama container ── */
         #panoramaContainer {
             display: none;
             position: fixed;
@@ -129,13 +123,13 @@
             background: #000;
         }
 
-        /* Pannellum fills this div */
+        /* Pannellum fills this div entirely */
         #panoramaViewer {
             width: 100%;
             height: 100%;
         }
 
-        /* Floating nav bar over the panorama */
+        /* Nav bar floats above Pannellum */
         #panoBar {
             position: fixed;
             top: 14px;
@@ -264,10 +258,10 @@
 
 
 <!-- ════════════════════════════════════════
-     360° PANORAMA VIEW
-     No <a-scene> here. Pannellum creates its own
-     WebGL canvas inside #panoramaViewer at runtime,
-     completely separate from the MindAR scene.
+     360° PANORAMA CONTAINER
+     No <a-scene> here. Pannellum is loaded the
+     first time a user opens a panorama, then
+     creates its viewer inside #panoramaViewer.
 ════════════════════════════════════════ -->
 <div id="panoramaContainer">
     <div id="panoramaViewer"></div>
@@ -368,7 +362,7 @@
 <script>
 /* ════════════════════════════════════════════════════════════════
    LOCATION CONFIG
-   panoramas : array of relative image paths (your JPGs in /assets).
+   panoramas : array of image paths from your /assets folder.
                One entry  → single photo, no nav arrows.
                Two+ entries → prev/next arrows appear automatically.
                TO ADD A PHOTO: push another filename into the array.
@@ -510,9 +504,34 @@ let currentPanoIndex = 0;
 let currentPanoName  = "";
 let actionCameFromPicker = false;
 let activePicker = null;
+let pannellumViewer = null;   // active Pannellum instance
 
-// Pannellum viewer instance — kept so we can destroy it on exit
-let pannellumViewer = null;
+
+/* ════════════════════════════════════════════════════════════════
+   LAZY PANNELLUM LOADER
+   Pannellum's CSS and JS are NOT in the <head>.
+   They are injected into the DOM the very first time a user opens
+   a panorama — well after MindAR has fully started — so they
+   cannot interfere with camera or scene initialization.
+════════════════════════════════════════════════════════════════ */
+let pannellumLoaded = false;
+
+function loadPannellumLibrary() {
+    return new Promise((resolve) => {
+        // Already loaded on a previous panorama open — skip injection
+        if (pannellumLoaded) { resolve(); return; }
+
+        const css = document.createElement('link');
+        css.rel  = 'stylesheet';
+        css.href = 'https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css';
+        document.head.appendChild(css);
+
+        const js = document.createElement('script');
+        js.src = 'https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js';
+        js.onload = () => { pannellumLoaded = true; resolve(); };
+        document.head.appendChild(js);
+    });
+}
 
 
 /* ════════════════════════════════════════════════════════════════
@@ -583,18 +602,19 @@ function showAction(locKey, fromPicker = false) {
 
 
 /* ════════════════════════════════════════════════════════════════
-   PANORAMA — powered by Pannellum
+   PANORAMA — Pannellum loaded lazily on first use
 
-   How it works:
-   - pannellum.viewer(containerId, config) creates a self-contained
-     WebGL canvas inside #panoramaViewer. It has zero interaction
-     with A-Frame or MindAR.
-   - Each call to loadPanorama() destroys the previous viewer and
-     creates a fresh one pointing at the new image URL directly.
-   - The image paths come straight from LOCATIONS[locKey].panoramas[].
-   - On exit, the viewer is destroyed and the AR system restarts.
+   Flow:
+   1. User taps "View 360° Photos"
+   2. enterPanorama() hides menus and stops AR tracking
+   3. loadPannellumLibrary() injects CSS+JS if not already done
+      (on subsequent opens this resolves immediately)
+   4. panoramaContainer is shown
+   5. Pannellum creates its viewer inside #panoramaViewer with
+      the direct image URL — no A-Frame asset system involved
+   6. On exit, viewer is destroyed, AR restarts
 ════════════════════════════════════════════════════════════════ */
-function enterPanorama(locKey) {
+async function enterPanorama(locKey) {
     const loc = LOCATIONS[locKey];
     hideAllMenus();
     arScene.systems["mindar-image-system"].stop();
@@ -603,8 +623,12 @@ function enterPanorama(locKey) {
     currentPanoIndex = 0;
     currentPanoName  = loc.name;
 
-    arScene.style.display    = 'none';
+    // Show container before loading so Pannellum gets correct dimensions
+    arScene.style.display           = 'none';
     panoramaContainer.style.display = 'block';
+
+    // Inject Pannellum if this is the first panorama open
+    await loadPannellumLibrary();
 
     loadPanorama(0);
 }
@@ -613,20 +637,18 @@ function loadPanorama(index) {
     currentPanoIndex = index;
     const total = currentPanoList.length;
 
-    // Destroy any existing viewer before creating a new one
+    // Destroy any previous viewer
     if (pannellumViewer) {
         pannellumViewer.destroy();
         pannellumViewer = null;
     }
 
-    // Create Pannellum viewer — direct URL, no A-Frame asset system involved
+    // Create fresh viewer pointed at the direct image URL from the array
     pannellumViewer = pannellum.viewer('panoramaViewer', {
         type:         'equirectangular',
-        panorama:     currentPanoList[index],   // ← direct path from your array
+        panorama:     currentPanoList[index],
         autoLoad:     true,
-        showControls: false,                    // we provide our own nav bar
-        mouseZoom:    true,
-        touchPanSpeedCoeffFact: 1
+        showControls: false
     });
 
     // Update nav bar
@@ -679,7 +701,7 @@ function enterVideo(locKey) {
     arScene.systems["mindar-image-system"].stop();
 
     locationVideo.src = loc.video;
-    arScene.style.display    = 'none';
+    arScene.style.display       = 'none';
     videoContainer.style.display = 'flex';
     locationVideo.play();
 }
@@ -730,7 +752,9 @@ startButton.addEventListener('click', async () => {
     try {
         if (!arScene.hasLoaded) {
             await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Scene load timed out')), 15000);
+                const timeout = setTimeout(
+                    () => reject(new Error('Scene load timed out')), 15000
+                );
                 arScene.addEventListener('loaded', () => {
                     clearTimeout(timeout);
                     resolve();
@@ -750,8 +774,9 @@ startButton.addEventListener('click', async () => {
         loadingMsg.style.display = 'none';
 
         let msg = '⚠️ Could not start the camera.';
-        if (err && (err.name === 'NotAllowedError' || (err.message && err.message.includes('permission')))) {
-            msg = '⚠️ Camera access was denied. Please allow camera permission in your browser settings and try again.';
+        if (err && (err.name === 'NotAllowedError' ||
+                   (err.message && err.message.includes('permission')))) {
+            msg = '⚠️ Camera access was denied. Please allow camera permission and try again.';
         } else if (err && err.message) {
             msg = '⚠️ ' + err.message;
         }
